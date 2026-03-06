@@ -2,7 +2,7 @@
 set -e
 
 echo "Running database migrations..."
-npx prisma db push --skip-generate
+./node_modules/.bin/prisma db push --skip-generate
 echo "Migrations complete."
 
 exec "$@"
