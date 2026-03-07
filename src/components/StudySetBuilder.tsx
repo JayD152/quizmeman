@@ -19,6 +19,7 @@ import {
   ToggleLeft,
   BookOpenText,
   GitCompareArrows,
+  Image as ImageIcon,
 } from "lucide-react"
 
 type QuestionType = "MULTIPLE_CHOICE" | "WRITTEN" | "TRUE_FALSE" | "MATCHING" | "FLASHCARD"
@@ -34,8 +35,33 @@ interface Question {
   id: string
   type: QuestionType
   text: string
+  imageUrl: string
   choices: Choice[]
   correctAnswer: string
+}
+
+export interface StudySetBuilderInitialData {
+  id: string
+  title: string
+  type: SetType
+  timeLimit: number | null
+  shuffle: boolean
+  questions: {
+    id: string
+    type: QuestionType
+    text: string
+    imageUrl: string | null
+    correctAnswer: string | null
+    choices: {
+      id: string
+      text: string
+      isCorrect: boolean
+    }[]
+  }[]
+}
+
+interface StudySetBuilderProps {
+  initialData?: StudySetBuilderInitialData
 }
 
 function makeChoice(): Choice {
@@ -47,6 +73,7 @@ function makeMCQuestion(): Question {
     id: crypto.randomUUID(),
     type: "MULTIPLE_CHOICE",
     text: "",
+    imageUrl: "",
     choices: [makeChoice(), makeChoice(), makeChoice(), makeChoice()],
     correctAnswer: "",
   }
@@ -57,6 +84,7 @@ function makeWrittenQuestion(): Question {
     id: crypto.randomUUID(),
     type: "WRITTEN",
     text: "",
+    imageUrl: "",
     choices: [],
     correctAnswer: "",
   }
@@ -67,6 +95,7 @@ function makeTrueFalseQuestion(): Question {
     id: crypto.randomUUID(),
     type: "TRUE_FALSE",
     text: "",
+    imageUrl: "",
     choices: [],
     correctAnswer: "TRUE",
   }
@@ -77,6 +106,7 @@ function makeMatchingQuestion(): Question {
     id: crypto.randomUUID(),
     type: "MATCHING",
     text: "",
+    imageUrl: "",
     choices: [],
     correctAnswer: "",
   }
@@ -87,6 +117,7 @@ function makeFlashcard(): Question {
     id: crypto.randomUUID(),
     type: "FLASHCARD",
     text: "",
+    imageUrl: "",
     choices: [],
     correctAnswer: "",
   }
@@ -108,14 +139,45 @@ function questionTypeLabel(type: QuestionType): string {
   return "Flashcard"
 }
 
-export default function StudySetBuilder() {
+function isValidImageUrl(url: string): boolean {
+  if (!url.trim()) return true
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === "http:" || parsed.protocol === "https:"
+  } catch {
+    return false
+  }
+}
+
+function mapInitialQuestions(initialData: StudySetBuilderInitialData): Question[] {
+  return initialData.questions.map((q) => ({
+    id: q.id,
+    type: q.type,
+    text: q.text,
+    imageUrl: q.imageUrl || "",
+    choices: q.choices.map((choice) => ({
+      id: choice.id,
+      text: choice.text,
+      isCorrect: choice.isCorrect,
+    })),
+    correctAnswer: q.correctAnswer || (q.type === "TRUE_FALSE" ? "TRUE" : ""),
+  }))
+}
+
+export default function StudySetBuilder({ initialData }: StudySetBuilderProps) {
   const router = useRouter()
-  const [step, setStep] = useState<"type" | "build">("type")
-  const [setType, setSetType] = useState<SetType>("MULTIPLE_CHOICE")
-  const [title, setTitle] = useState("")
-  const [timeLimitMin, setTimeLimitMin] = useState("")
-  const [shuffle, setShuffle] = useState(false)
-  const [questions, setQuestions] = useState<Question[]>([])
+  const isEditing = Boolean(initialData)
+
+  const [step, setStep] = useState<"type" | "build">(isEditing ? "build" : "type")
+  const [setType, setSetType] = useState<SetType>(initialData?.type ?? "MULTIPLE_CHOICE")
+  const [title, setTitle] = useState(initialData?.title ?? "")
+  const [timeLimitMin, setTimeLimitMin] = useState(
+    initialData?.timeLimit ? Math.max(1, Math.round(initialData.timeLimit / 60)).toString() : ""
+  )
+  const [shuffle, setShuffle] = useState(initialData?.shuffle ?? false)
+  const [questions, setQuestions] = useState<Question[]>(
+    initialData ? mapInitialQuestions(initialData) : []
+  )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -147,6 +209,10 @@ export default function StudySetBuilder() {
 
   const updateQuestionText = (id: string, text: string) => {
     setQuestions((prev) => prev.map((q) => (q.id === id ? { ...q, text } : q)))
+  }
+
+  const updateQuestionImageUrl = (id: string, imageUrl: string) => {
+    setQuestions((prev) => prev.map((q) => (q.id === id ? { ...q, imageUrl } : q)))
   }
 
   const updateCorrectAnswer = (id: string, correctAnswer: string) => {
@@ -235,6 +301,12 @@ export default function StudySetBuilder() {
         )
         return
       }
+
+      if (!isValidImageUrl(q.imageUrl)) {
+        setError(`Question ${i + 1} has an invalid image URL`)
+        return
+      }
+
       if (q.type === "MULTIPLE_CHOICE") {
         if (q.choices.length < 2) {
           setError(`Question ${i + 1} needs at least 2 choices`)
@@ -269,8 +341,11 @@ export default function StudySetBuilder() {
 
     setSaving(true)
     try {
-      const res = await fetch("/api/study-sets", {
-        method: "POST",
+      const endpoint = isEditing ? `/api/study-sets/${initialData?.id}` : "/api/study-sets"
+      const method = isEditing ? "PATCH" : "POST"
+
+      const res = await fetch(endpoint, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title.trim(),
@@ -279,6 +354,7 @@ export default function StudySetBuilder() {
           shuffle,
           questions: questions.map((q, i) => ({
             text: q.text.trim(),
+            imageUrl: q.imageUrl.trim(),
             type: q.type,
             order: i,
             choices:
@@ -301,8 +377,9 @@ export default function StudySetBuilder() {
 
       if (!res.ok) throw new Error("Failed to save")
       router.push("/")
+      router.refresh()
     } catch {
-      setError("Failed to save study set. Please try again.")
+      setError(isEditing ? "Failed to update study set. Please try again." : "Failed to save study set. Please try again.")
     } finally {
       setSaving(false)
     }
@@ -320,7 +397,7 @@ export default function StudySetBuilder() {
         </button>
 
         <h1 className="font-heading text-3xl sm:text-4xl font-bold text-snow tracking-tight mb-3">
-          Create a New Study Set
+          {isEditing ? "Change Study Set Type" : "Create a New Study Set"}
         </h1>
         <p className="text-fog text-lg mb-12">Choose the study mode you want to build.</p>
 
@@ -377,7 +454,7 @@ export default function StudySetBuilder() {
               <Layers className="w-6 h-6 text-white" />
             </div>
             <h3 className="font-heading text-lg font-bold text-snow mb-2">Mixed Quiz</h3>
-            <p className="text-fog text-sm leading-relaxed">Blend multiple choice, written, and true/false.</p>
+            <p className="text-fog text-sm leading-relaxed">Blend multiple choice, written, true/false, and matching.</p>
           </button>
 
           <button
@@ -485,8 +562,19 @@ export default function StudySetBuilder() {
               value={q.text}
               onChange={(e) => updateQuestionText(q.id, e.target.value)}
               placeholder={q.type === "FLASHCARD" ? "Term" : q.type === "MATCHING" ? "Left-side term" : "Enter your question..."}
-              className="w-full bg-dusk border border-steel/60 rounded-xl px-4 py-3 text-snow placeholder-smoke focus:border-white/30 focus:outline-none transition-colors mb-4"
+              className="w-full bg-dusk border border-steel/60 rounded-xl px-4 py-3 text-snow placeholder-smoke focus:border-white/30 focus:outline-none transition-colors mb-3"
             />
+
+            <div className="relative mb-4">
+              <ImageIcon className="w-4 h-4 text-smoke absolute left-3 top-3.5" />
+              <input
+                type="url"
+                value={q.imageUrl}
+                onChange={(e) => updateQuestionImageUrl(q.id, e.target.value)}
+                placeholder="Image URL (optional)"
+                className="w-full pl-9 bg-dusk border border-steel/60 rounded-xl px-4 py-3 text-snow placeholder-smoke focus:border-white/30 focus:outline-none transition-colors"
+              />
+            </div>
 
             {q.type === "MULTIPLE_CHOICE" && (
               <>
@@ -679,9 +767,7 @@ export default function StudySetBuilder() {
             className="flex items-center gap-2 bg-night border border-dashed border-steel text-fog hover:text-white hover:border-white/20 rounded-xl px-6 py-3.5 transition-all duration-200 w-full justify-center cursor-pointer"
           >
             <Plus className="w-5 h-5" />
-            <span className="text-sm font-medium">
-              {setType === "FLASHCARD" ? "Add Card" : "Add Question"}
-            </span>
+            <span className="text-sm font-medium">{setType === "FLASHCARD" ? "Add Card" : "Add Question"}</span>
           </button>
         )}
       </div>
@@ -693,7 +779,15 @@ export default function StudySetBuilder() {
           className="w-full flex items-center justify-center gap-2.5 bg-white text-black font-heading font-bold py-4 rounded-xl hover:shadow-lg hover:shadow-white/15 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
           {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-          {saving ? "Saving..." : setType === "FLASHCARD" ? "Save Flashcard Set" : "Save Study Set"}
+          {saving
+            ? isEditing
+              ? "Updating..."
+              : "Saving..."
+            : isEditing
+            ? "Update Study Set"
+            : setType === "FLASHCARD"
+            ? "Save Flashcard Set"
+            : "Save Study Set"}
         </button>
       </div>
     </div>

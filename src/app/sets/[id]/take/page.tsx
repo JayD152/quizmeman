@@ -39,13 +39,16 @@ export default async function TakePage({
   if (!studySet) redirect("/")
   if (studySet.type === "FLASHCARD") redirect(`/sets/${id}/flashcards`)
 
-  type PrismaQuestion = typeof studySet.questions[number]
+  type PrismaQuestion = (typeof studySet.questions)[number]
   type PrismaChoice = PrismaQuestion["choices"][number]
 
   // Strip correct answers (don't send to client)
-  let questions = studySet.questions.map((q: PrismaQuestion) => ({
+  let questions = studySet.questions.map((q: PrismaQuestion) => {
+    const question = q as PrismaQuestion & { imageUrl?: string | null }
+    return {
     id: q.id,
     text: q.text,
+    imageUrl: question.imageUrl || undefined,
     type: q.type as "MULTIPLE_CHOICE" | "WRITTEN" | "TRUE_FALSE" | "MATCHING",
     order: q.order,
     choices: q.choices.map((c: PrismaChoice) => ({
@@ -54,7 +57,8 @@ export default async function TakePage({
       order: c.order,
     })),
     matchRight: q.type === "MATCHING" ? q.correctAnswer || "" : undefined,
-  }))
+    }
+  })
 
   // Shuffle if enabled
   if (studySet.shuffle) {

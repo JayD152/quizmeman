@@ -91,6 +91,7 @@ model StudySet {
 model Question {
   id            String         @id @default(cuid())
   text          String
+  imageUrl      String?
   type          QuestionType
   order         Int
   correctAnswer String? // For written questions

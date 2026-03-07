@@ -1,4 +1,5 @@
 "use client"
+/* eslint-disable @next/next/no-img-element */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
@@ -26,6 +27,7 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
   const [timeRemaining, setTimeRemaining] = useState<number | null>(studySet.timeLimit)
   const [submitting, setSubmitting] = useState(false)
   const [activeLeftId, setActiveLeftId] = useState<string | null>(null)
+  const [modalImageUrl, setModalImageUrl] = useState<string | null>(null)
   const startTimeRef = useRef(Date.now())
   const hasSubmittedRef = useRef(false)
 
@@ -196,7 +198,7 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
               <div>
                 <h2 className="font-heading text-lg font-semibold text-snow leading-relaxed mb-1">Matching</h2>
                 <p className="text-fog text-sm">
-                  Click the arrow next to a left term, then click a right term to connect them.
+                  Click the arrow next to a left term, then click a right term to connect them. Double-click an image to zoom.
                 </p>
               </div>
             </div>
@@ -225,6 +227,14 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
                           <ArrowRight className="w-4 h-4" />
                         </button>
                         <span className="text-snow text-sm font-medium flex-1">{question.text}</span>
+                        {question.imageUrl && (
+                          <img
+                            src={question.imageUrl}
+                            alt="Question reference"
+                            onDoubleClick={() => setModalImageUrl(question.imageUrl || null)}
+                            className="w-10 h-10 object-cover rounded-md border border-steel/50 cursor-zoom-in"
+                          />
+                        )}
                         {connectedRightId && (
                           <span className={`text-xs font-bold px-2 py-1 rounded-full border ${leftBadgeClass[(index + 1) % leftBadgeClass.length]}`}>
                             {pairNumber}
@@ -318,7 +328,17 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
                   <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-dusk text-white font-heading font-bold text-sm shrink-0">
                     {index + 1}
                   </span>
-                  <h2 className="font-heading text-lg font-semibold text-snow leading-relaxed">{question.text}</h2>
+                  <div className="w-full">
+                    <h2 className="font-heading text-lg font-semibold text-snow leading-relaxed">{question.text}</h2>
+                    {question.imageUrl && (
+                      <img
+                        src={question.imageUrl}
+                        alt="Question reference"
+                        onDoubleClick={() => setModalImageUrl(question.imageUrl || null)}
+                        className="mt-3 max-h-36 w-auto rounded-lg border border-steel/50 object-contain cursor-zoom-in"
+                      />
+                    )}
+                  </div>
                 </div>
 
                 {question.type === "MULTIPLE_CHOICE" && (
@@ -423,6 +443,31 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
             </p>
           )}
         </div>
+
+        {modalImageUrl && (
+          <div
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
+            onClick={() => setModalImageUrl(null)}
+          >
+            <div
+              className="relative max-w-5xl w-full max-h-[90vh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => setModalImageUrl(null)}
+                className="absolute -top-10 right-0 text-white/80 hover:text-white cursor-pointer"
+              >
+                Close
+              </button>
+              <img
+                src={modalImageUrl}
+                alt="Expanded question"
+                className="w-full max-h-[85vh] object-contain rounded-xl border border-white/20"
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

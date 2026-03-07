@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth-options"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 
+const optionalImageUrlSchema = z.union([z.string().url(), z.literal(""), z.undefined()])
+
 const choiceSchema = z.object({
   text: z.string().min(1),
   isCorrect: z.boolean(),
@@ -12,6 +14,7 @@ const choiceSchema = z.object({
 
 const questionSchema = z.object({
   text: z.string().min(1),
+  imageUrl: optionalImageUrlSchema,
   type: z.enum(["MULTIPLE_CHOICE", "WRITTEN", "TRUE_FALSE", "MATCHING", "FLASHCARD"]),
   order: z.number(),
   choices: z.array(choiceSchema).optional(),
@@ -158,6 +161,7 @@ export async function POST(request: Request) {
       questions: {
         create: questions.map((q) => ({
           text: q.text,
+          imageUrl: q.imageUrl?.trim() ? q.imageUrl.trim() : null,
           type: q.type,
           order: q.order,
           correctAnswer:

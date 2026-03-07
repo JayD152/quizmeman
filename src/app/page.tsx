@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { authOptions } from "@/lib/auth-options"
 import { prisma } from "@/lib/prisma"
-import { Plus, BookOpen, Target, TrendingUp, Layers } from "lucide-react"
+import { Plus, BookOpen, Target, TrendingUp, Layers, Pencil } from "lucide-react"
 import { DeleteSetButton } from "@/components/DeleteSetButton"
 
 const TYPE_CONFIG = {
@@ -105,7 +105,16 @@ export default async function DashboardPage() {
                   >
                     {cfg.label}
                   </span>
-                  <DeleteSetButton setId={set.id} />
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/sets/${set.id}/edit`}
+                      className="text-smoke hover:text-white transition-colors p-1"
+                      title="Edit study set"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Link>
+                    <DeleteSetButton setId={set.id} />
+                  </div>
                 </div>
 
                 {/* Title */}

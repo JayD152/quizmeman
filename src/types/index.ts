@@ -12,6 +12,7 @@ export interface StudySetCard {
 export interface QuizQuestion {
   id: string
   text: string
+  imageUrl?: string
   type: "MULTIPLE_CHOICE" | "WRITTEN" | "TRUE_FALSE" | "MATCHING"
   order: number
   choices: QuizChoice[]
