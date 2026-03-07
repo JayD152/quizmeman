@@ -16,10 +16,12 @@ import {
   Save,
   Loader2,
   AlertCircle,
+  ToggleLeft,
+  BookOpenText,
 } from "lucide-react"
 
-type QuestionType = "MULTIPLE_CHOICE" | "WRITTEN"
-type SetType = "MULTIPLE_CHOICE" | "WRITTEN" | "MIXED"
+type QuestionType = "MULTIPLE_CHOICE" | "WRITTEN" | "TRUE_FALSE" | "FLASHCARD"
+type SetType = "MULTIPLE_CHOICE" | "WRITTEN" | "TRUE_FALSE" | "MIXED" | "FLASHCARD"
 
 interface Choice {
   id: string
@@ -59,6 +61,40 @@ function makeWrittenQuestion(): Question {
   }
 }
 
+function makeTrueFalseQuestion(): Question {
+  return {
+    id: crypto.randomUUID(),
+    type: "TRUE_FALSE",
+    text: "",
+    choices: [],
+    correctAnswer: "TRUE",
+  }
+}
+
+function makeFlashcard(): Question {
+  return {
+    id: crypto.randomUUID(),
+    type: "FLASHCARD",
+    text: "",
+    choices: [],
+    correctAnswer: "",
+  }
+}
+
+function makeQuestionForType(type: QuestionType): Question {
+  if (type === "MULTIPLE_CHOICE") return makeMCQuestion()
+  if (type === "WRITTEN") return makeWrittenQuestion()
+  if (type === "TRUE_FALSE") return makeTrueFalseQuestion()
+  return makeFlashcard()
+}
+
+function questionTypeLabel(type: QuestionType): string {
+  if (type === "MULTIPLE_CHOICE") return "Multiple Choice"
+  if (type === "WRITTEN") return "Written"
+  if (type === "TRUE_FALSE") return "True / False"
+  return "Flashcard"
+}
+
 export default function StudySetBuilder() {
   const router = useRouter()
   const [step, setStep] = useState<"type" | "build">("type")
@@ -77,16 +113,17 @@ export default function StudySetBuilder() {
       setQuestions([makeMCQuestion()])
     } else if (type === "WRITTEN") {
       setQuestions([makeWrittenQuestion()])
+    } else if (type === "TRUE_FALSE") {
+      setQuestions([makeTrueFalseQuestion()])
+    } else if (type === "FLASHCARD") {
+      setQuestions([makeFlashcard()])
     } else {
       setQuestions([])
     }
   }
 
   const addQuestion = (type: QuestionType) => {
-    setQuestions((prev) => [
-      ...prev,
-      type === "MULTIPLE_CHOICE" ? makeMCQuestion() : makeWrittenQuestion(),
-    ])
+    setQuestions((prev) => [...prev, makeQuestionForType(type)])
   }
 
   const removeQuestion = (id: string) => {
@@ -94,14 +131,18 @@ export default function StudySetBuilder() {
   }
 
   const updateQuestionText = (id: string, text: string) => {
-    setQuestions((prev) =>
-      prev.map((q) => (q.id === id ? { ...q, text } : q))
-    )
+    setQuestions((prev) => prev.map((q) => (q.id === id ? { ...q, text } : q)))
   }
 
   const updateCorrectAnswer = (id: string, correctAnswer: string) => {
     setQuestions((prev) =>
       prev.map((q) => (q.id === id ? { ...q, correctAnswer } : q))
+    )
+  }
+
+  const setTrueFalseAnswer = (id: string, answer: "TRUE" | "FALSE") => {
+    setQuestions((prev) =>
+      prev.map((q) => (q.id === id ? { ...q, correctAnswer: answer } : q))
     )
   }
 
@@ -121,19 +162,13 @@ export default function StudySetBuilder() {
     )
   }
 
-  const updateChoiceText = (
-    questionId: string,
-    choiceId: string,
-    text: string
-  ) => {
+  const updateChoiceText = (questionId: string, choiceId: string, text: string) => {
     setQuestions((prev) =>
       prev.map((q) =>
         q.id === questionId
           ? {
               ...q,
-              choices: q.choices.map((c) =>
-                c.id === choiceId ? { ...c, text } : c
-              ),
+              choices: q.choices.map((c) => (c.id === choiceId ? { ...c, text } : c)),
             }
           : q
       )
@@ -171,14 +206,18 @@ export default function StudySetBuilder() {
     }
 
     if (questions.length === 0) {
-      setError("Add at least one question")
+      setError(setType === "FLASHCARD" ? "Add at least one flashcard" : "Add at least one question")
       return
     }
 
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i]
       if (!q.text.trim()) {
-        setError(`Question ${i + 1} is missing text`)
+        setError(
+          setType === "FLASHCARD"
+            ? `Card ${i + 1} is missing a term`
+            : `Question ${i + 1} is missing text`
+        )
         return
       }
       if (q.type === "MULTIPLE_CHOICE") {
@@ -199,6 +238,14 @@ export default function StudySetBuilder() {
         setError(`Question ${i + 1} needs a correct answer`)
         return
       }
+      if (q.type === "TRUE_FALSE" && !["TRUE", "FALSE"].includes(q.correctAnswer.toUpperCase())) {
+        setError(`Question ${i + 1} needs TRUE or FALSE as the answer`)
+        return
+      }
+      if (q.type === "FLASHCARD" && !q.correctAnswer.trim()) {
+        setError(`Card ${i + 1} is missing a definition`)
+        return
+      }
     }
 
     setSaving(true)
@@ -209,7 +256,7 @@ export default function StudySetBuilder() {
         body: JSON.stringify({
           title: title.trim(),
           type: setType,
-          timeLimit: timeLimitMin ? parseInt(timeLimitMin) * 60 : null,
+          timeLimit: setType === "FLASHCARD" ? null : timeLimitMin ? parseInt(timeLimitMin) * 60 : null,
           shuffle,
           questions: questions.map((q, i) => ({
             text: q.text.trim(),
@@ -224,7 +271,11 @@ export default function StudySetBuilder() {
                   }))
                 : undefined,
             correctAnswer:
-              q.type === "WRITTEN" ? q.correctAnswer.trim() : undefined,
+              q.type === "WRITTEN" || q.type === "FLASHCARD"
+                ? q.correctAnswer.trim()
+                : q.type === "TRUE_FALSE"
+                ? q.correctAnswer.trim().toUpperCase()
+                : undefined,
           })),
         }),
       })
@@ -238,10 +289,9 @@ export default function StudySetBuilder() {
     }
   }
 
-  // ─── Type Selection Step ───
   if (step === "type") {
     return (
-      <div className="max-w-4xl mx-auto px-6 py-16 animate-fade-in">
+      <div className="max-w-6xl mx-auto px-6 py-16 animate-fade-in">
         <button
           onClick={() => router.push("/")}
           className="flex items-center gap-2 text-fog hover:text-snow transition-colors mb-10 cursor-pointer"
@@ -253,71 +303,70 @@ export default function StudySetBuilder() {
         <h1 className="font-heading text-3xl sm:text-4xl font-bold text-snow tracking-tight mb-3">
           Create a New Study Set
         </h1>
-        <p className="text-fog text-lg mb-12">
-          Choose the type of questions for your study set.
-        </p>
+        <p className="text-fog text-lg mb-12">Choose the study mode you want to build.</p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          {/* Multiple Choice */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
           <button
             onClick={() => selectType("MULTIPLE_CHOICE")}
-            className="group bg-night border border-steel/50 rounded-2xl p-8 text-left hover:border-white/30 hover:shadow-lg hover:shadow-white/5 transition-all duration-300 cursor-pointer"
+            className="group bg-night border border-steel/50 rounded-2xl p-6 text-left hover:border-white/30 hover:shadow-lg hover:shadow-white/5 transition-all duration-300 cursor-pointer"
           >
-            <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-5 group-hover:bg-white/10 transition-colors">
-              <CheckCircle2 className="w-7 h-7 text-white" />
+            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 group-hover:bg-white/10 transition-colors">
+              <CheckCircle2 className="w-6 h-6 text-white" />
             </div>
-            <h3 className="font-heading text-xl font-bold text-snow mb-2">
-              Multiple Choice
-            </h3>
-            <p className="text-fog text-sm leading-relaxed">
-              Questions with selectable answer choices. Great for quick review
-              and memorization.
-            </p>
+            <h3 className="font-heading text-lg font-bold text-snow mb-2">Multiple Choice</h3>
+            <p className="text-fog text-sm leading-relaxed">Selectable options with one correct answer.</p>
           </button>
 
-          {/* Written */}
           <button
             onClick={() => selectType("WRITTEN")}
-            className="group bg-night border border-steel/50 rounded-2xl p-8 text-left hover:border-white/30 hover:shadow-lg hover:shadow-white/5 transition-all duration-300 cursor-pointer"
+            className="group bg-night border border-steel/50 rounded-2xl p-6 text-left hover:border-white/30 hover:shadow-lg hover:shadow-white/5 transition-all duration-300 cursor-pointer"
           >
-            <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-5 group-hover:bg-white/10 transition-colors">
-              <PenLine className="w-7 h-7 text-white" />
+            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 group-hover:bg-white/10 transition-colors">
+              <PenLine className="w-6 h-6 text-white" />
             </div>
-            <h3 className="font-heading text-xl font-bold text-snow mb-2">
-              Written
-            </h3>
-            <p className="text-fog text-sm leading-relaxed">
-              Type your answers from memory. Perfect for deep recall and essay
-              practice.
-            </p>
+            <h3 className="font-heading text-lg font-bold text-snow mb-2">Written</h3>
+            <p className="text-fog text-sm leading-relaxed">Type the answer from memory with free-form text.</p>
           </button>
 
-          {/* Mixed */}
+          <button
+            onClick={() => selectType("TRUE_FALSE")}
+            className="group bg-night border border-steel/50 rounded-2xl p-6 text-left hover:border-white/30 hover:shadow-lg hover:shadow-white/5 transition-all duration-300 cursor-pointer"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 group-hover:bg-white/10 transition-colors">
+              <ToggleLeft className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="font-heading text-lg font-bold text-snow mb-2">True / False</h3>
+            <p className="text-fog text-sm leading-relaxed">Fast binary checks for factual recall.</p>
+          </button>
+
           <button
             onClick={() => selectType("MIXED")}
-            className="group bg-night border border-steel/50 rounded-2xl p-8 text-left hover:border-white/30 hover:shadow-lg hover:shadow-white/5 transition-all duration-300 cursor-pointer"
+            className="group bg-night border border-steel/50 rounded-2xl p-6 text-left hover:border-white/30 hover:shadow-lg hover:shadow-white/5 transition-all duration-300 cursor-pointer"
           >
-            <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-5 group-hover:bg-white/10 transition-colors">
-              <Layers className="w-7 h-7 text-white" />
+            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 group-hover:bg-white/10 transition-colors">
+              <Layers className="w-6 h-6 text-white" />
             </div>
-            <h3 className="font-heading text-xl font-bold text-snow mb-2">
-              Mixed
-            </h3>
-            <p className="text-fog text-sm leading-relaxed">
-              Combine both question types for a well-rounded study experience.
-            </p>
+            <h3 className="font-heading text-lg font-bold text-snow mb-2">Mixed Quiz</h3>
+            <p className="text-fog text-sm leading-relaxed">Blend multiple choice, written, and true/false.</p>
+          </button>
+
+          <button
+            onClick={() => selectType("FLASHCARD")}
+            className="group bg-night border border-steel/50 rounded-2xl p-6 text-left hover:border-white/30 hover:shadow-lg hover:shadow-white/5 transition-all duration-300 cursor-pointer"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 group-hover:bg-white/10 transition-colors">
+              <BookOpenText className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="font-heading text-lg font-bold text-snow mb-2">Flashcards</h3>
+            <p className="text-fog text-sm leading-relaxed">Build term-definition vocab sets for card review mode.</p>
           </button>
         </div>
       </div>
     )
   }
 
-  // ─── Build Step ───
-  const accentColor = "white"
-
   return (
     <div className="max-w-3xl mx-auto px-6 py-12 animate-fade-in">
-      {/* Back */}
       <button
         onClick={() => setStep("type")}
         className="flex items-center gap-2 text-fog hover:text-snow transition-colors mb-8 cursor-pointer"
@@ -326,7 +375,6 @@ export default function StudySetBuilder() {
         Change type
       </button>
 
-      {/* Error Banner */}
       {error && (
         <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-5 py-3.5 mb-8 animate-scale-in">
           <AlertCircle className="w-5 h-5 shrink-0" />
@@ -340,33 +388,31 @@ export default function StudySetBuilder() {
         </div>
       )}
 
-      {/* Title */}
       <input
         type="text"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="Name your study set..."
+        placeholder={setType === "FLASHCARD" ? "Name your flashcard set..." : "Name your study set..."}
         className="w-full bg-transparent border-none text-3xl sm:text-4xl font-heading font-bold text-snow placeholder-steel focus:outline-none mb-8"
       />
 
-      {/* Settings Row */}
       <div className="flex flex-wrap items-center gap-4 mb-10 pb-10 border-b border-steel/30">
-        {/* Timer */}
-        <div className="flex items-center gap-2.5 bg-night border border-steel/50 rounded-xl px-4 py-2.5">
-          <Clock className="w-4 h-4 text-smoke" />
-          <input
-            type="number"
-            value={timeLimitMin}
-            onChange={(e) => setTimeLimitMin(e.target.value)}
-            placeholder="No limit"
-            min="1"
-            max="180"
-            className="w-20 bg-transparent text-snow placeholder-smoke text-sm focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          />
-          <span className="text-smoke text-sm">min</span>
-        </div>
+        {setType !== "FLASHCARD" && (
+          <div className="flex items-center gap-2.5 bg-night border border-steel/50 rounded-xl px-4 py-2.5">
+            <Clock className="w-4 h-4 text-smoke" />
+            <input
+              type="number"
+              value={timeLimitMin}
+              onChange={(e) => setTimeLimitMin(e.target.value)}
+              placeholder="No limit"
+              min="1"
+              max="180"
+              className="w-20 bg-transparent text-snow placeholder-smoke text-sm focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+            <span className="text-smoke text-sm">min</span>
+          </div>
+        )}
 
-        {/* Shuffle Toggle */}
         <button
           onClick={() => setShuffle(!shuffle)}
           className={`flex items-center gap-2.5 border rounded-xl px-4 py-2.5 transition-all duration-200 cursor-pointer ${
@@ -376,32 +422,21 @@ export default function StudySetBuilder() {
           }`}
         >
           <Shuffle className="w-4 h-4" />
-          <span className="text-sm font-medium">Shuffle</span>
+          <span className="text-sm font-medium">{setType === "FLASHCARD" ? "Shuffle cards" : "Shuffle"}</span>
         </button>
       </div>
 
-      {/* Questions */}
       <div className="space-y-6">
         {questions.map((q, index) => (
-          <div
-            key={q.id}
-            className="bg-night border border-steel/50 rounded-2xl p-6 animate-scale-in"
-          >
-            {/* Question Header */}
+          <div key={q.id} className="bg-night border border-steel/50 rounded-2xl p-6 animate-scale-in">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <span
-                  className={`font-heading font-bold text-sm text-white`}
-                >
-                  Q{index + 1}
+                <span className="font-heading font-bold text-sm text-white">
+                  {setType === "FLASHCARD" ? `Card ${index + 1}` : `Q${index + 1}`}
                 </span>
-                {setType === "MIXED" && (
-                  <span
-                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider bg-white/5 text-fog`}
-                  >
-                    {q.type === "MULTIPLE_CHOICE"
-                      ? "Multiple Choice"
-                      : "Written"}
+                {(setType === "MIXED" || setType === "FLASHCARD") && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider bg-white/5 text-fog">
+                    {questionTypeLabel(q.type)}
                   </span>
                 )}
               </div>
@@ -415,16 +450,14 @@ export default function StudySetBuilder() {
               )}
             </div>
 
-            {/* Question Text */}
             <input
               type="text"
               value={q.text}
               onChange={(e) => updateQuestionText(q.id, e.target.value)}
-              placeholder="Enter your question..."
+              placeholder={q.type === "FLASHCARD" ? "Term" : "Enter your question..."}
               className="w-full bg-dusk border border-steel/60 rounded-xl px-4 py-3 text-snow placeholder-smoke focus:border-white/30 focus:outline-none transition-colors mb-4"
             />
 
-            {/* Multiple Choice Options */}
             {q.type === "MULTIPLE_CHOICE" && (
               <>
                 <div className="space-y-2.5">
@@ -438,16 +471,12 @@ export default function StudySetBuilder() {
                             : "border-steel hover:border-fog"
                         }`}
                       >
-                        {choice.isCorrect && (
-                          <Check className="w-3.5 h-3.5 text-black" />
-                        )}
+                        {choice.isCorrect && <Check className="w-3.5 h-3.5 text-black" />}
                       </button>
                       <input
                         type="text"
                         value={choice.text}
-                        onChange={(e) =>
-                          updateChoiceText(q.id, choice.id, e.target.value)
-                        }
+                        onChange={(e) => updateChoiceText(q.id, choice.id, e.target.value)}
                         placeholder={`Answer choice ${ci + 1}`}
                         className="flex-1 bg-dusk border border-steel/60 rounded-lg px-4 py-2.5 text-snow text-sm placeholder-smoke focus:border-white/30 focus:outline-none transition-colors"
                       />
@@ -463,7 +492,6 @@ export default function StudySetBuilder() {
                   ))}
                 </div>
 
-                {/* Add Choices Buttons */}
                 {q.choices.length < 6 && (
                   <div className="flex gap-2 mt-3">
                     {q.choices.length + 2 <= 6 && (
@@ -482,20 +510,17 @@ export default function StudySetBuilder() {
                         +4 choices
                       </button>
                     )}
-                    {q.choices.length < 6 && (
-                      <button
-                        onClick={() => addChoices(q.id, 1)}
-                        className="text-xs text-fog hover:text-white border border-steel/40 rounded-lg px-3 py-1.5 hover:border-white/20 transition-colors cursor-pointer"
-                      >
-                        +1 choice
-                      </button>
-                    )}
+                    <button
+                      onClick={() => addChoices(q.id, 1)}
+                      className="text-xs text-fog hover:text-white border border-steel/40 rounded-lg px-3 py-1.5 hover:border-white/20 transition-colors cursor-pointer"
+                    >
+                      +1 choice
+                    </button>
                   </div>
                 )}
               </>
             )}
 
-            {/* Written Answer */}
             {q.type === "WRITTEN" && (
               <div>
                 <label className="text-xs text-fog mb-1.5 block font-medium uppercase tracking-wider">
@@ -510,12 +535,56 @@ export default function StudySetBuilder() {
                 />
               </div>
             )}
+
+            {q.type === "TRUE_FALSE" && (
+              <div>
+                <label className="text-xs text-fog mb-2 block font-medium uppercase tracking-wider">
+                  Correct Answer
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setTrueFalseAnswer(q.id, "TRUE")}
+                    className={`rounded-xl px-4 py-3 text-sm font-semibold border transition-colors cursor-pointer ${
+                      q.correctAnswer.toUpperCase() === "TRUE"
+                        ? "bg-white text-black border-white"
+                        : "bg-dusk text-fog border-steel/50 hover:text-white"
+                    }`}
+                  >
+                    True
+                  </button>
+                  <button
+                    onClick={() => setTrueFalseAnswer(q.id, "FALSE")}
+                    className={`rounded-xl px-4 py-3 text-sm font-semibold border transition-colors cursor-pointer ${
+                      q.correctAnswer.toUpperCase() === "FALSE"
+                        ? "bg-white text-black border-white"
+                        : "bg-dusk text-fog border-steel/50 hover:text-white"
+                    }`}
+                  >
+                    False
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {q.type === "FLASHCARD" && (
+              <div>
+                <label className="text-xs text-fog mb-1.5 block font-medium uppercase tracking-wider">
+                  Definition
+                </label>
+                <textarea
+                  value={q.correctAnswer}
+                  onChange={(e) => updateCorrectAnswer(q.id, e.target.value)}
+                  placeholder="Definition / explanation"
+                  rows={4}
+                  className="w-full bg-dusk border border-steel/60 rounded-xl px-4 py-3 text-snow placeholder-smoke focus:border-white/30 focus:outline-none transition-colors resize-y"
+                />
+              </div>
+            )}
           </div>
         ))}
       </div>
 
-      {/* Add Question Button(s) */}
-      <div className="mt-6 flex justify-center gap-3">
+      <div className="mt-6 flex flex-wrap justify-center gap-3">
         {setType === "MIXED" ? (
           <>
             <button
@@ -523,9 +592,7 @@ export default function StudySetBuilder() {
               className="flex items-center gap-2 bg-night border border-steel/50 text-fog hover:text-white hover:border-white/20 rounded-xl px-5 py-3 transition-all duration-200 cursor-pointer"
             >
               <Plus className="w-5 h-5" />
-              <span className="text-sm font-medium">
-                Add Multiple Choice
-              </span>
+              <span className="text-sm font-medium">Add Multiple Choice</span>
             </button>
             <button
               onClick={() => addQuestion("WRITTEN")}
@@ -534,6 +601,13 @@ export default function StudySetBuilder() {
               <Plus className="w-5 h-5" />
               <span className="text-sm font-medium">Add Written</span>
             </button>
+            <button
+              onClick={() => addQuestion("TRUE_FALSE")}
+              className="flex items-center gap-2 bg-night border border-steel/50 text-fog hover:text-white hover:border-white/20 rounded-xl px-5 py-3 transition-all duration-200 cursor-pointer"
+            >
+              <Plus className="w-5 h-5" />
+              <span className="text-sm font-medium">Add True / False</span>
+            </button>
           </>
         ) : (
           <button
@@ -541,30 +615,31 @@ export default function StudySetBuilder() {
               addQuestion(
                 setType === "MULTIPLE_CHOICE"
                   ? "MULTIPLE_CHOICE"
-                  : "WRITTEN"
+                  : setType === "WRITTEN"
+                  ? "WRITTEN"
+                  : setType === "TRUE_FALSE"
+                  ? "TRUE_FALSE"
+                  : "FLASHCARD"
               )
             }
             className="flex items-center gap-2 bg-night border border-dashed border-steel text-fog hover:text-white hover:border-white/20 rounded-xl px-6 py-3.5 transition-all duration-200 w-full justify-center cursor-pointer"
           >
             <Plus className="w-5 h-5" />
-            <span className="text-sm font-medium">Add Question</span>
+            <span className="text-sm font-medium">
+              {setType === "FLASHCARD" ? "Add Card" : "Add Question"}
+            </span>
           </button>
         )}
       </div>
 
-      {/* Save */}
       <div className="mt-12 pt-8 border-t border-steel/30">
         <button
           onClick={handleSave}
           disabled={saving}
           className="w-full flex items-center justify-center gap-2.5 bg-white text-black font-heading font-bold py-4 rounded-xl hover:shadow-lg hover:shadow-white/15 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
-          {saving ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : (
-            <Save className="w-5 h-5" />
-          )}
-          {saving ? "Saving..." : "Save Study Set"}
+          {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+          {saving ? "Saving..." : setType === "FLASHCARD" ? "Save Flashcard Set" : "Save Study Set"}
         </button>
       </div>
     </div>

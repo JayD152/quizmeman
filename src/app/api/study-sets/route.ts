@@ -12,7 +12,7 @@ const choiceSchema = z.object({
 
 const questionSchema = z.object({
   text: z.string().min(1),
-  type: z.enum(["MULTIPLE_CHOICE", "WRITTEN"]),
+  type: z.enum(["MULTIPLE_CHOICE", "WRITTEN", "TRUE_FALSE", "FLASHCARD"]),
   order: z.number(),
   choices: z.array(choiceSchema).optional(),
   correctAnswer: z.string().optional(),
@@ -20,10 +20,75 @@ const questionSchema = z.object({
 
 const createSetSchema = z.object({
   title: z.string().min(1).max(200),
-  type: z.enum(["MULTIPLE_CHOICE", "WRITTEN", "MIXED"]),
+  type: z.enum(["MULTIPLE_CHOICE", "WRITTEN", "TRUE_FALSE", "MIXED", "FLASHCARD"]),
   timeLimit: z.number().positive().nullable(),
   shuffle: z.boolean(),
   questions: z.array(questionSchema).min(1),
+}).superRefine((data, ctx) => {
+  for (let i = 0; i < data.questions.length; i++) {
+    const question = data.questions[i]
+
+    if (question.type === "MULTIPLE_CHOICE") {
+      if (!question.choices || question.choices.length < 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["questions", i, "choices"],
+          message: "Multiple choice questions need at least 2 choices.",
+        })
+      }
+      if (!question.choices?.some((choice) => choice.isCorrect)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["questions", i, "choices"],
+          message: "Multiple choice questions need a correct choice.",
+        })
+      }
+    }
+
+    if (question.type === "WRITTEN" || question.type === "FLASHCARD") {
+      if (!question.correctAnswer?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["questions", i, "correctAnswer"],
+          message: "Written and flashcard questions require a correct answer.",
+        })
+      }
+    }
+
+    if (question.type === "TRUE_FALSE") {
+      if (!["TRUE", "FALSE"].includes((question.correctAnswer || "").toUpperCase())) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["questions", i, "correctAnswer"],
+          message: "True/False questions must have TRUE or FALSE as the correct answer.",
+        })
+      }
+    }
+  }
+
+  if (data.type === "MIXED") {
+    if (data.questions.some((q) => q.type === "FLASHCARD")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["questions"],
+        message: "Flashcard cards cannot be part of mixed quiz sets.",
+      })
+    }
+  } else if (data.questions.some((q) => q.type !== data.type)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["questions"],
+      message: "All questions must match the selected set type.",
+    })
+  }
+
+  if (data.type === "FLASHCARD" && data.timeLimit !== null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["timeLimit"],
+      message: "Flashcard sets do not support timed mode.",
+    })
+  }
 })
 
 export async function GET() {
@@ -91,7 +156,12 @@ export async function POST(request: Request) {
           text: q.text,
           type: q.type,
           order: q.order,
-          correctAnswer: q.type === "WRITTEN" ? q.correctAnswer : null,
+          correctAnswer:
+            q.type === "WRITTEN" || q.type === "TRUE_FALSE" || q.type === "FLASHCARD"
+              ? q.type === "TRUE_FALSE"
+                ? q.correctAnswer?.trim().toUpperCase()
+                : q.correctAnswer?.trim()
+              : null,
           choices:
             q.type === "MULTIPLE_CHOICE" && q.choices
               ? {

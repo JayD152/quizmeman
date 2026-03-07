@@ -37,6 +37,8 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
             questionId: q.id,
             ...(q.type === "MULTIPLE_CHOICE"
               ? { selectedChoiceId: answers[q.id] || null }
+              : q.type === "TRUE_FALSE"
+              ? { writtenAnswer: answers[q.id] || "" }
               : { writtenAnswer: answers[q.id] || "" }),
           })),
           timeTaken,
@@ -208,6 +210,34 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
                         className="sr-only"
                       />
                     </label>
+                  ))}
+                </div>
+              )}
+
+              {/* True / False */}
+              {question.type === "TRUE_FALSE" && (
+                <div className="ml-12 grid grid-cols-2 gap-3">
+                  {[
+                    { key: "TRUE", label: "True" },
+                    { key: "FALSE", label: "False" },
+                  ].map((option) => (
+                    <button
+                      key={option.key}
+                      onClick={() =>
+                        setAnswers((prev) => ({
+                          ...prev,
+                          [question.id]: option.key,
+                        }))
+                      }
+                      type="button"
+                      className={`p-4 rounded-xl border text-sm font-semibold transition-all duration-200 cursor-pointer ${
+                        answers[question.id] === option.key
+                          ? "border-white/50 bg-white/10 text-white"
+                          : "border-steel/40 hover:border-steel bg-dusk/50 hover:bg-dusk text-fog"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
                   ))}
                 </div>
               )}

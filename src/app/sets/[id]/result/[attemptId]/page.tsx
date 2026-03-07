@@ -260,6 +260,21 @@ export default async function ResultPage({
                     )
                   })}
                 </div>
+              ) : question.type === "TRUE_FALSE" ? (
+                <div className="ml-8 space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-smoke">Your answer:</span>
+                    <span className={isCorrect ? "text-white" : "text-smoke"}>
+                      {(answer.writtenAnswer || "(blank)").toUpperCase()}
+                    </span>
+                  </div>
+                  {!isCorrect && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-smoke">Correct answer:</span>
+                      <span className="text-white">{(question.correctAnswer || "").toUpperCase()}</span>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="ml-8 space-y-2">
                   <div className="flex items-center gap-2 text-sm">

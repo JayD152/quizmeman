@@ -9,7 +9,9 @@ import { DeleteSetButton } from "@/components/DeleteSetButton"
 const TYPE_CONFIG = {
   MULTIPLE_CHOICE: { label: "Multiple Choice", color: "text-white bg-white/5 border-white/15" },
   WRITTEN: { label: "Written", color: "text-fog bg-white/5 border-white/15" },
+  TRUE_FALSE: { label: "True / False", color: "text-fog bg-white/5 border-white/15" },
   MIXED: { label: "Mixed", color: "text-fog bg-white/5 border-white/15" },
+  FLASHCARD: { label: "Flashcards", color: "text-fog bg-white/5 border-white/15" },
 } as const
 
 export default async function DashboardPage() {
@@ -125,37 +127,41 @@ export default async function DashboardPage() {
                 </div>
 
                 {/* Scores */}
-                <div className="flex items-center gap-5 mb-6">
-                  <div>
-                    <span className="text-[10px] text-smoke uppercase tracking-widest font-semibold">
-                      Last Score
-                    </span>
-                    <p className="font-heading text-lg font-bold text-snow">
-                      {set.lastScore !== null
-                        ? `${Math.round(set.lastScore)}%`
-                        : "—"}
-                    </p>
+                {set.type !== "FLASHCARD" ? (
+                  <div className="flex items-center gap-5 mb-6">
+                    <div>
+                      <span className="text-[10px] text-smoke uppercase tracking-widest font-semibold">
+                        Last Score
+                      </span>
+                      <p className="font-heading text-lg font-bold text-snow">
+                        {set.lastScore !== null
+                          ? `${Math.round(set.lastScore)}%`
+                          : "—"}
+                      </p>
+                    </div>
+                    <div className="w-px h-9 bg-steel/60" />
+                    <div>
+                      <span className="text-[10px] text-smoke uppercase tracking-widest font-semibold flex items-center gap-1">
+                        <TrendingUp className="w-3 h-3" />
+                        Average
+                      </span>
+                      <p className="font-heading text-lg font-bold text-snow">
+                        {set.avgScore !== null
+                          ? `${Math.round(set.avgScore)}%`
+                          : "—"}
+                      </p>
+                    </div>
                   </div>
-                  <div className="w-px h-9 bg-steel/60" />
-                  <div>
-                    <span className="text-[10px] text-smoke uppercase tracking-widest font-semibold flex items-center gap-1">
-                      <TrendingUp className="w-3 h-3" />
-                      Average
-                    </span>
-                    <p className="font-heading text-lg font-bold text-snow">
-                      {set.avgScore !== null
-                        ? `${Math.round(set.avgScore)}%`
-                        : "—"}
-                    </p>
-                  </div>
-                </div>
+                ) : (
+                  <div className="mb-6 text-sm text-fog">No scoring in flashcard mode.</div>
+                )}
 
                 {/* Take Button */}
                 <Link
-                  href={`/sets/${set.id}/take`}
+                  href={set.type === "FLASHCARD" ? `/sets/${set.id}/flashcards` : `/sets/${set.id}/take`}
                   className="block w-full text-center bg-dusk border border-steel/50 text-snow font-heading font-semibold py-3 rounded-xl hover:bg-white hover:text-black hover:border-white/50 transition-all duration-300"
                 >
-                  Take Quiz
+                  {set.type === "FLASHCARD" ? "Study Flashcards" : "Take Quiz"}
                 </Link>
               </div>
             )

@@ -29,6 +29,13 @@ export async function POST(
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
 
+  if (studySet.type === "FLASHCARD") {
+    return NextResponse.json(
+      { error: "Flashcard sets are study-only and do not support quiz attempts." },
+      { status: 400 }
+    )
+  }
+
   let totalCorrect = 0
   const answerData: {
     questionId: string
@@ -48,10 +55,16 @@ export async function POST(
     if (question.type === "MULTIPLE_CHOICE") {
       const correctChoice = question.choices.find((c: { isCorrect: boolean }) => c.isCorrect)
       isCorrect = ans.selectedChoiceId === correctChoice?.id
-    } else {
+    } else if (question.type === "WRITTEN") {
       isCorrect =
         (ans.writtenAnswer || "").trim().toLowerCase() ===
         (question.correctAnswer || "").trim().toLowerCase()
+    } else if (question.type === "TRUE_FALSE") {
+      isCorrect =
+        (ans.writtenAnswer || "").trim().toUpperCase() ===
+        (question.correctAnswer || "").trim().toUpperCase()
+    } else {
+      continue
     }
 
     if (isCorrect) totalCorrect++

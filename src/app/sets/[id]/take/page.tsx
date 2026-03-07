@@ -37,6 +37,7 @@ export default async function TakePage({
   })
 
   if (!studySet) redirect("/")
+  if (studySet.type === "FLASHCARD") redirect(`/sets/${id}/flashcards`)
 
   type PrismaQuestion = typeof studySet.questions[number]
   type PrismaChoice = PrismaQuestion["choices"][number]
@@ -45,7 +46,7 @@ export default async function TakePage({
   let questions = studySet.questions.map((q: PrismaQuestion) => ({
     id: q.id,
     text: q.text,
-    type: q.type as "MULTIPLE_CHOICE" | "WRITTEN",
+    type: q.type as "MULTIPLE_CHOICE" | "WRITTEN" | "TRUE_FALSE",
     order: q.order,
     choices: q.choices.map((c: PrismaChoice) => ({
       id: c.id,

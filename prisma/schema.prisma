@@ -60,12 +60,16 @@ model VerificationToken {
 enum SetType {
   MULTIPLE_CHOICE
   WRITTEN
+  TRUE_FALSE
   MIXED
+  FLASHCARD
 }
 
 enum QuestionType {
   MULTIPLE_CHOICE
   WRITTEN
+  TRUE_FALSE
+  FLASHCARD
 }
 
 model StudySet {
