@@ -5,6 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { LogOut } from "lucide-react"
+import { ThemeToggle } from "@/components/ThemeToggle"
 
 export function Navbar() {
   const { data: session } = useSession()
@@ -27,6 +28,8 @@ export function Navbar() {
         </Link>
 
         <div className="flex items-center gap-4">
+          <ThemeToggle />
+
           {session.user?.image && (
             <Image
               src={session.user.image}

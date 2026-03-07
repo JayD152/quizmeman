@@ -1,10 +1,15 @@
 "use client"
 
 import { signIn } from "next-auth/react"
+import { ThemeToggle } from "@/components/ThemeToggle"
 
 export default function SignInPage() {
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-6">
+      <div className="absolute top-6 right-6 z-10">
+        <ThemeToggle />
+      </div>
+
       {/* Background blobs */}
       <div className="absolute top-1/4 -left-40 w-[500px] h-[500px] rounded-full bg-white/[0.02] blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 -right-40 w-[500px] h-[500px] rounded-full bg-white/[0.02] blur-3xl pointer-events-none" />

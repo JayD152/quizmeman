@@ -27,7 +27,20 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(() => {
+              const key = "quizme-theme";
+              const saved = localStorage.getItem(key);
+              const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+              const useDark = saved ? saved === "dark" : prefersDark;
+              document.documentElement.classList.toggle("dark", useDark);
+            })();`,
+          }}
+        />
+      </head>
       <body className={`${outfit.variable} ${jakarta.variable} antialiased`}>
         <Providers>
           <Navbar />

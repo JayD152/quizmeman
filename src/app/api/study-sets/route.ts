@@ -71,11 +71,11 @@ const createSetSchema = z.object({
   }
 
   if (data.type === "MIXED") {
-    if (data.questions.some((q) => q.type === "FLASHCARD" || q.type === "MATCHING")) {
+    if (data.questions.some((q) => q.type === "FLASHCARD")) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["questions"],
-        message: "Flashcard and matching items cannot be part of mixed quiz sets.",
+        message: "Flashcard cards cannot be part of mixed quiz sets.",
       })
     }
   } else if (data.questions.some((q) => q.type !== data.type)) {

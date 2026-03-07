@@ -653,6 +653,13 @@ export default function StudySetBuilder() {
               <Plus className="w-5 h-5" />
               <span className="text-sm font-medium">Add True / False</span>
             </button>
+            <button
+              onClick={() => addQuestion("MATCHING")}
+              className="flex items-center gap-2 bg-night border border-steel/50 text-fog hover:text-white hover:border-white/20 rounded-xl px-5 py-3 transition-all duration-200 cursor-pointer"
+            >
+              <Plus className="w-5 h-5" />
+              <span className="text-sm font-medium">Add Matching</span>
+            </button>
           </>
         ) : (
           <button

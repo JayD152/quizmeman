@@ -7,19 +7,19 @@
 
 @theme inline {
   /* ── Backgrounds ── */
-  --color-midnight: #000000;
-  --color-night: #0a0a0a;
-  --color-dusk: #111111;
-  --color-twilight: #171717;
+  --color-midnight: var(--palette-midnight);
+  --color-night: var(--palette-night);
+  --color-dusk: var(--palette-dusk);
+  --color-twilight: var(--palette-twilight);
 
   /* ── Borders ── */
-  --color-steel: #1f1f1f;
-  --color-mist: #2a2a2a;
+  --color-steel: var(--palette-steel);
+  --color-mist: var(--palette-mist);
 
   /* ── Text ── */
-  --color-snow: #ffffff;
-  --color-fog: #a3a3a3;
-  --color-smoke: #666666;
+  --color-snow: var(--palette-snow);
+  --color-fog: var(--palette-fog);
+  --color-smoke: var(--palette-smoke);
 
   /* ── Accent (white) ── */
   --color-gold: #ffffff;
@@ -46,6 +46,42 @@
   --animate-slide-up: slide-up 0.5s ease-out both;
   --animate-scale-in: scale-in 0.3s ease-out both;
   --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
+}
+
+:root {
+  color-scheme: light;
+
+  --palette-midnight: #f5f5f5;
+  --palette-night: #ffffff;
+  --palette-dusk: #ededed;
+  --palette-twilight: #e5e5e5;
+
+  --palette-steel: #d4d4d4;
+  --palette-mist: #bfbfbf;
+
+  --palette-snow: #111111;
+  --palette-fog: #4a4a4a;
+  --palette-smoke: #666666;
+
+  --selection-bg: rgba(0, 0, 0, 0.12);
+}
+
+.dark {
+  color-scheme: dark;
+
+  --palette-midnight: #000000;
+  --palette-night: #0a0a0a;
+  --palette-dusk: #111111;
+  --palette-twilight: #171717;
+
+  --palette-steel: #1f1f1f;
+  --palette-mist: #2a2a2a;
+
+  --palette-snow: #ffffff;
+  --palette-fog: #a3a3a3;
+  --palette-smoke: #666666;
+
+  --selection-bg: rgba(255, 255, 255, 0.15);
 }
 
 @keyframes fade-in {
@@ -83,6 +119,6 @@ body {
 
 /* ── Selection ── */
 ::selection {
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
+  background: var(--selection-bg);
+  color: var(--color-snow);
 }

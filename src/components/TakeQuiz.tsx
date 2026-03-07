@@ -29,21 +29,29 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
   const startTimeRef = useRef(Date.now())
   const hasSubmittedRef = useRef(false)
 
-  const isMatchingMode = studySet.questions.length > 0 && studySet.questions.every((q) => q.type === "MATCHING")
+  const matchingQuestions = useMemo(
+    () => studySet.questions.filter((q) => q.type === "MATCHING"),
+    [studySet.questions]
+  )
+  const hasMatchingQuestions = matchingQuestions.length > 0
+  const nonMatchingQuestions = useMemo(
+    () => studySet.questions.filter((q) => q.type !== "MATCHING"),
+    [studySet.questions]
+  )
 
   const matchingRightOptions = useMemo(() => {
-    if (!isMatchingMode) return []
+    if (!hasMatchingQuestions) return []
     return shuffleArray(
-      studySet.questions.map((q) => ({
+      matchingQuestions.map((q) => ({
         id: q.id,
         text: q.matchRight || "",
       }))
     )
-  }, [isMatchingMode, studySet.questions])
+  }, [hasMatchingQuestions, matchingQuestions])
 
   const questionIndexById = useMemo(
-    () => Object.fromEntries(studySet.questions.map((q, index) => [q.id, index + 1])),
-    [studySet.questions]
+    () => Object.fromEntries(matchingQuestions.map((q, index) => [q.id, index + 1])),
+    [matchingQuestions]
   )
 
   const handleSubmit = useCallback(async () => {
@@ -179,7 +187,7 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
           <div className="h-full bg-white rounded-full transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
         </div>
 
-        {isMatchingMode ? (
+        {hasMatchingQuestions && (
           <div className="bg-night border border-steel/50 rounded-2xl p-6 sm:p-8 animate-slide-up">
             <div className="flex items-start gap-4 mb-6">
               <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-dusk text-white font-heading font-bold text-sm shrink-0">
@@ -195,7 +203,7 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-3">
-                {studySet.questions.map((question, index) => {
+                {matchingQuestions.map((question, index) => {
                   const connectedRightId = answers[question.id]
                   const pairNumber = questionIndexById[question.id]
                   return (
@@ -296,9 +304,11 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
               <p className="text-sm text-white mt-5">Now choose a right term to complete this match.</p>
             )}
           </div>
-        ) : (
+        )}
+
+        {nonMatchingQuestions.length > 0 && (
           <div className="space-y-8">
-            {studySet.questions.map((question, index) => (
+            {nonMatchingQuestions.map((question, index) => (
               <div
                 key={question.id}
                 className="bg-night border border-steel/50 rounded-2xl p-6 sm:p-8 animate-slide-up"
