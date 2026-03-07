@@ -10,6 +10,7 @@ const TYPE_CONFIG = {
   MULTIPLE_CHOICE: { label: "Multiple Choice", color: "text-white bg-white/5 border-white/15" },
   WRITTEN: { label: "Written", color: "text-fog bg-white/5 border-white/15" },
   TRUE_FALSE: { label: "True / False", color: "text-fog bg-white/5 border-white/15" },
+  MATCHING: { label: "Matching", color: "text-fog bg-white/5 border-white/15" },
   MIXED: { label: "Mixed", color: "text-fog bg-white/5 border-white/15" },
   FLASHCARD: { label: "Flashcards", color: "text-fog bg-white/5 border-white/15" },
 } as const

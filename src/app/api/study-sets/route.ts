@@ -12,7 +12,7 @@ const choiceSchema = z.object({
 
 const questionSchema = z.object({
   text: z.string().min(1),
-  type: z.enum(["MULTIPLE_CHOICE", "WRITTEN", "TRUE_FALSE", "FLASHCARD"]),
+  type: z.enum(["MULTIPLE_CHOICE", "WRITTEN", "TRUE_FALSE", "MATCHING", "FLASHCARD"]),
   order: z.number(),
   choices: z.array(choiceSchema).optional(),
   correctAnswer: z.string().optional(),
@@ -20,7 +20,7 @@ const questionSchema = z.object({
 
 const createSetSchema = z.object({
   title: z.string().min(1).max(200),
-  type: z.enum(["MULTIPLE_CHOICE", "WRITTEN", "TRUE_FALSE", "MIXED", "FLASHCARD"]),
+  type: z.enum(["MULTIPLE_CHOICE", "WRITTEN", "TRUE_FALSE", "MATCHING", "MIXED", "FLASHCARD"]),
   timeLimit: z.number().positive().nullable(),
   shuffle: z.boolean(),
   questions: z.array(questionSchema).min(1),
@@ -45,12 +45,16 @@ const createSetSchema = z.object({
       }
     }
 
-    if (question.type === "WRITTEN" || question.type === "FLASHCARD") {
+    if (
+      question.type === "WRITTEN" ||
+      question.type === "MATCHING" ||
+      question.type === "FLASHCARD"
+    ) {
       if (!question.correctAnswer?.trim()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["questions", i, "correctAnswer"],
-          message: "Written and flashcard questions require a correct answer.",
+          message: "Written, matching, and flashcard questions require a correct answer.",
         })
       }
     }
@@ -67,11 +71,11 @@ const createSetSchema = z.object({
   }
 
   if (data.type === "MIXED") {
-    if (data.questions.some((q) => q.type === "FLASHCARD")) {
+    if (data.questions.some((q) => q.type === "FLASHCARD" || q.type === "MATCHING")) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["questions"],
-        message: "Flashcard cards cannot be part of mixed quiz sets.",
+        message: "Flashcard and matching items cannot be part of mixed quiz sets.",
       })
     }
   } else if (data.questions.some((q) => q.type !== data.type)) {
@@ -157,7 +161,7 @@ export async function POST(request: Request) {
           type: q.type,
           order: q.order,
           correctAnswer:
-            q.type === "WRITTEN" || q.type === "TRUE_FALSE" || q.type === "FLASHCARD"
+            q.type === "WRITTEN" || q.type === "TRUE_FALSE" || q.type === "MATCHING" || q.type === "FLASHCARD"
               ? q.type === "TRUE_FALSE"
                 ? q.correctAnswer?.trim().toUpperCase()
                 : q.correctAnswer?.trim()

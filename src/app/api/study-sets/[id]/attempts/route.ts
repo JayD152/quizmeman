@@ -63,6 +63,10 @@ export async function POST(
       isCorrect =
         (ans.writtenAnswer || "").trim().toUpperCase() ===
         (question.correctAnswer || "").trim().toUpperCase()
+    } else if (question.type === "MATCHING") {
+      isCorrect =
+        (ans.writtenAnswer || "").trim().toLowerCase() ===
+        (question.correctAnswer || "").trim().toLowerCase()
     } else {
       continue
     }

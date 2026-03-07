@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, Clock, Send, AlertTriangle } from "lucide-react"
+import { Loader2, Clock, Send, AlertTriangle, ArrowRight, Link2, Unlink } from "lucide-react"
 import type { QuizData } from "@/types"
 
 function formatTime(seconds: number): string {
@@ -11,15 +11,40 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`
 }
 
+function shuffleArray<T>(arr: T[]): T[] {
+  const copy = [...arr]
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[copy[i], copy[j]] = [copy[j], copy[i]]
+  }
+  return copy
+}
+
 export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
   const router = useRouter()
   const [answers, setAnswers] = useState<Record<string, string>>({})
-  const [timeRemaining, setTimeRemaining] = useState<number | null>(
-    studySet.timeLimit
-  )
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(studySet.timeLimit)
   const [submitting, setSubmitting] = useState(false)
+  const [activeLeftId, setActiveLeftId] = useState<string | null>(null)
   const startTimeRef = useRef(Date.now())
   const hasSubmittedRef = useRef(false)
+
+  const isMatchingMode = studySet.questions.length > 0 && studySet.questions.every((q) => q.type === "MATCHING")
+
+  const matchingRightOptions = useMemo(() => {
+    if (!isMatchingMode) return []
+    return shuffleArray(
+      studySet.questions.map((q) => ({
+        id: q.id,
+        text: q.matchRight || "",
+      }))
+    )
+  }, [isMatchingMode, studySet.questions])
+
+  const questionIndexById = useMemo(
+    () => Object.fromEntries(studySet.questions.map((q, index) => [q.id, index + 1])),
+    [studySet.questions]
+  )
 
   const handleSubmit = useCallback(async () => {
     if (hasSubmittedRef.current || submitting) return
@@ -37,8 +62,11 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
             questionId: q.id,
             ...(q.type === "MULTIPLE_CHOICE"
               ? { selectedChoiceId: answers[q.id] || null }
-              : q.type === "TRUE_FALSE"
-              ? { writtenAnswer: answers[q.id] || "" }
+              : q.type === "MATCHING"
+              ? {
+                  writtenAnswer:
+                    studySet.questions.find((candidate) => candidate.id === answers[q.id])?.matchRight || "",
+                }
               : { writtenAnswer: answers[q.id] || "" }),
           })),
           timeTaken,
@@ -56,7 +84,6 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
     }
   }, [answers, studySet, submitting, router])
 
-  // Timer
   useEffect(() => {
     if (!studySet.timeLimit) return
 
@@ -73,7 +100,6 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
     return () => clearInterval(interval)
   }, [studySet.timeLimit])
 
-  // Auto-submit on time up
   useEffect(() => {
     if (timeRemaining === 0) {
       handleSubmit()
@@ -84,9 +110,26 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
   const totalCount = studySet.questions.length
   const progress = (answeredCount / totalCount) * 100
 
+  const leftBadgeClass = [
+    "bg-sky-500/20 text-sky-300 border-sky-400/30",
+    "bg-amber-500/20 text-amber-300 border-amber-400/30",
+    "bg-rose-500/20 text-rose-300 border-rose-400/30",
+    "bg-violet-500/20 text-violet-300 border-violet-400/30",
+    "bg-teal-500/20 text-teal-300 border-teal-400/30",
+    "bg-lime-500/20 text-lime-300 border-lime-400/30",
+  ]
+
+  const rightBadgeClass = [
+    "bg-blue-500/20 text-blue-300 border-blue-400/30",
+    "bg-orange-500/20 text-orange-300 border-orange-400/30",
+    "bg-pink-500/20 text-pink-300 border-pink-400/30",
+    "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-400/30",
+    "bg-emerald-500/20 text-emerald-300 border-emerald-400/30",
+    "bg-green-500/20 text-green-300 border-green-400/30",
+  ]
+
   return (
     <div className="relative min-h-screen">
-      {/* Timer Bar */}
       {studySet.timeLimit !== null && timeRemaining !== null && (
         <div className="fixed top-16 left-0 right-0 z-30">
           <div className="h-1 bg-night/50">
@@ -106,13 +149,10 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
         </div>
       )}
 
-      <div className="max-w-3xl mx-auto px-6 py-8">
-        {/* Header */}
+      <div className="max-w-5xl mx-auto px-6 py-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10 animate-fade-in">
           <div>
-            <h1 className="font-heading text-2xl sm:text-3xl font-bold text-snow tracking-tight">
-              {studySet.title}
-            </h1>
+            <h1 className="font-heading text-2xl sm:text-3xl font-bold text-snow tracking-tight">{studySet.title}</h1>
             <p className="text-fog mt-1">
               {answeredCount} of {totalCount} answered
             </p>
@@ -128,159 +168,248 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
                   : "border-white/40 text-white bg-white/10 animate-pulse"
               }`}
             >
-              {timeRemaining <= (studySet.timeLimit ?? 0) * 0.1 && (
-                <AlertTriangle className="w-4 h-4" />
-              )}
+              {timeRemaining <= (studySet.timeLimit ?? 0) * 0.1 && <AlertTriangle className="w-4 h-4" />}
               <Clock className="w-4 h-4" />
-              <span className="font-heading font-bold text-lg tabular-nums">
-                {formatTime(timeRemaining)}
-              </span>
+              <span className="font-heading font-bold text-lg tabular-nums">{formatTime(timeRemaining)}</span>
             </div>
           )}
         </div>
 
-        {/* Progress Bar */}
         <div className="h-1.5 bg-night rounded-full mb-10 overflow-hidden">
-          <div
-            className="h-full bg-white rounded-full transition-all duration-500 ease-out"
-            style={{ width: `${progress}%` }}
-          />
+          <div className="h-full bg-white rounded-full transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
         </div>
 
-        {/* Questions */}
-        <div className="space-y-8">
-          {studySet.questions.map((question, index) => (
-            <div
-              key={question.id}
-              className="bg-night border border-steel/50 rounded-2xl p-6 sm:p-8 animate-slide-up"
-              style={{ animationDelay: `${index * 60}ms` }}
-            >
-              <div className="flex items-start gap-4 mb-6">
-                <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-dusk text-white font-heading font-bold text-sm shrink-0">
-                  {index + 1}
-                </span>
-                <h2 className="font-heading text-lg font-semibold text-snow leading-relaxed">
-                  {question.text}
-                </h2>
+        {isMatchingMode ? (
+          <div className="bg-night border border-steel/50 rounded-2xl p-6 sm:p-8 animate-slide-up">
+            <div className="flex items-start gap-4 mb-6">
+              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-dusk text-white font-heading font-bold text-sm shrink-0">
+                <Link2 className="w-4 h-4" />
+              </span>
+              <div>
+                <h2 className="font-heading text-lg font-semibold text-snow leading-relaxed mb-1">Matching</h2>
+                <p className="text-fog text-sm">
+                  Click the arrow next to a left term, then click a right term to connect them.
+                </p>
               </div>
+            </div>
 
-              {/* Multiple Choice */}
-              {question.type === "MULTIPLE_CHOICE" && (
-                <div className="space-y-3 ml-12">
-                  {question.choices.map((choice) => (
-                    <label
-                      key={choice.id}
-                      className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all duration-200 ${
-                        answers[question.id] === choice.id
-                          ? "border-white/50 bg-white/5 shadow-sm shadow-white/10"
-                          : "border-steel/40 hover:border-steel bg-dusk/50 hover:bg-dusk"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-3">
+                {studySet.questions.map((question, index) => {
+                  const connectedRightId = answers[question.id]
+                  const pairNumber = questionIndexById[question.id]
+                  return (
+                    <div
+                      key={question.id}
+                      className={`rounded-xl border px-4 py-3 transition-colors ${
+                        activeLeftId === question.id
+                          ? "border-white/30 bg-white/10"
+                          : "border-steel/40 bg-dusk/40"
                       }`}
                     >
-                      <div
-                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                          answers[question.id] === choice.id
-                            ? "border-white bg-white"
-                            : "border-steel"
-                        }`}
-                      >
-                        {answers[question.id] === choice.id && (
-                          <div className="w-2 h-2 rounded-full bg-midnight" />
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setActiveLeftId((prev) => (prev === question.id ? null : question.id))}
+                          className="w-8 h-8 rounded-lg border border-white/20 text-white hover:bg-white/10 transition-colors flex items-center justify-center cursor-pointer"
+                          title="Select this term"
+                        >
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                        <span className="text-snow text-sm font-medium flex-1">{question.text}</span>
+                        {connectedRightId && (
+                          <span className={`text-xs font-bold px-2 py-1 rounded-full border ${leftBadgeClass[(index + 1) % leftBadgeClass.length]}`}>
+                            {pairNumber}
+                          </span>
+                        )}
+                        {connectedRightId && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAnswers((prev) => {
+                                const next = { ...prev }
+                                delete next[question.id]
+                                return next
+                              })
+                            }
+                            className="text-smoke hover:text-white transition-colors cursor-pointer"
+                            title="Clear match"
+                          >
+                            <Unlink className="w-4 h-4" />
+                          </button>
                         )}
                       </div>
-                      <span
-                        className={`text-sm ${
-                          answers[question.id] === choice.id
-                            ? "text-snow"
-                            : "text-fog"
-                        }`}
-                      >
-                        {choice.text}
-                      </span>
-                      <input
-                        type="radio"
-                        name={question.id}
-                        value={choice.id}
-                        checked={answers[question.id] === choice.id}
-                        onChange={() =>
-                          setAnswers((prev) => ({
-                            ...prev,
-                            [question.id]: choice.id,
-                          }))
-                        }
-                        className="sr-only"
-                      />
-                    </label>
-                  ))}
-                </div>
-              )}
+                    </div>
+                  )
+                })}
+              </div>
 
-              {/* True / False */}
-              {question.type === "TRUE_FALSE" && (
-                <div className="ml-12 grid grid-cols-2 gap-3">
-                  {[
-                    { key: "TRUE", label: "True" },
-                    { key: "FALSE", label: "False" },
-                  ].map((option) => (
+              <div className="space-y-3">
+                {matchingRightOptions.map((option) => {
+                  const linkedLeftId = Object.entries(answers).find(([, rightId]) => rightId === option.id)?.[0]
+                  const linkedNumber = linkedLeftId ? questionIndexById[linkedLeftId] : null
+
+                  return (
                     <button
-                      key={option.key}
-                      onClick={() =>
-                        setAnswers((prev) => ({
-                          ...prev,
-                          [question.id]: option.key,
-                        }))
-                      }
+                      key={option.id}
                       type="button"
-                      className={`p-4 rounded-xl border text-sm font-semibold transition-all duration-200 cursor-pointer ${
-                        answers[question.id] === option.key
-                          ? "border-white/50 bg-white/10 text-white"
-                          : "border-steel/40 hover:border-steel bg-dusk/50 hover:bg-dusk text-fog"
+                      onClick={() => {
+                        if (!activeLeftId) return
+                        setAnswers((prev) => {
+                          const next = { ...prev }
+
+                          for (const [leftId, rightId] of Object.entries(next)) {
+                            if (rightId === option.id) {
+                              delete next[leftId]
+                            }
+                          }
+
+                          next[activeLeftId] = option.id
+                          return next
+                        })
+                        setActiveLeftId(null)
+                      }}
+                      className={`w-full text-left rounded-xl border px-4 py-3 transition-all duration-200 ${
+                        activeLeftId
+                          ? "border-white/20 hover:border-white/40 bg-dusk/40"
+                          : "border-steel/40 bg-dusk/30"
                       }`}
                     >
-                      {option.label}
+                      <div className="flex items-center gap-3">
+                        <span className="text-fog text-sm flex-1">{option.text}</span>
+                        {linkedNumber !== null && (
+                          <span className={`text-xs font-bold px-2 py-1 rounded-full border ${rightBadgeClass[linkedNumber % rightBadgeClass.length]}`}>
+                            {linkedNumber}
+                          </span>
+                        )}
+                      </div>
                     </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Written */}
-              {question.type === "WRITTEN" && (
-                <div className="ml-12">
-                  <input
-                    type="text"
-                    value={answers[question.id] || ""}
-                    onChange={(e) =>
-                      setAnswers((prev) => ({
-                        ...prev,
-                        [question.id]: e.target.value,
-                      }))
-                    }
-                    placeholder="Type your answer..."
-                    className="w-full bg-dusk border border-steel/60 rounded-xl px-4 py-3.5 text-snow placeholder-smoke focus:border-white/30 focus:outline-none transition-colors"
-                  />
-                </div>
-              )}
+                  )
+                })}
+              </div>
             </div>
-          ))}
-        </div>
 
-        {/* Submit */}
+            {!activeLeftId && (
+              <p className="text-sm text-smoke mt-5">Select a left term to start linking.</p>
+            )}
+            {activeLeftId && (
+              <p className="text-sm text-white mt-5">Now choose a right term to complete this match.</p>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {studySet.questions.map((question, index) => (
+              <div
+                key={question.id}
+                className="bg-night border border-steel/50 rounded-2xl p-6 sm:p-8 animate-slide-up"
+                style={{ animationDelay: `${index * 60}ms` }}
+              >
+                <div className="flex items-start gap-4 mb-6">
+                  <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-dusk text-white font-heading font-bold text-sm shrink-0">
+                    {index + 1}
+                  </span>
+                  <h2 className="font-heading text-lg font-semibold text-snow leading-relaxed">{question.text}</h2>
+                </div>
+
+                {question.type === "MULTIPLE_CHOICE" && (
+                  <div className="space-y-3 ml-12">
+                    {question.choices.map((choice) => (
+                      <label
+                        key={choice.id}
+                        className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all duration-200 ${
+                          answers[question.id] === choice.id
+                            ? "border-white/50 bg-white/5 shadow-sm shadow-white/10"
+                            : "border-steel/40 hover:border-steel bg-dusk/50 hover:bg-dusk"
+                        }`}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                            answers[question.id] === choice.id ? "border-white bg-white" : "border-steel"
+                          }`}
+                        >
+                          {answers[question.id] === choice.id && <div className="w-2 h-2 rounded-full bg-midnight" />}
+                        </div>
+                        <span className={`text-sm ${answers[question.id] === choice.id ? "text-snow" : "text-fog"}`}>
+                          {choice.text}
+                        </span>
+                        <input
+                          type="radio"
+                          name={question.id}
+                          value={choice.id}
+                          checked={answers[question.id] === choice.id}
+                          onChange={() =>
+                            setAnswers((prev) => ({
+                              ...prev,
+                              [question.id]: choice.id,
+                            }))
+                          }
+                          className="sr-only"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {question.type === "TRUE_FALSE" && (
+                  <div className="ml-12 grid grid-cols-2 gap-3">
+                    {[
+                      { key: "TRUE", label: "True" },
+                      { key: "FALSE", label: "False" },
+                    ].map((option) => (
+                      <button
+                        key={option.key}
+                        onClick={() =>
+                          setAnswers((prev) => ({
+                            ...prev,
+                            [question.id]: option.key,
+                          }))
+                        }
+                        type="button"
+                        className={`p-4 rounded-xl border text-sm font-semibold transition-all duration-200 cursor-pointer ${
+                          answers[question.id] === option.key
+                            ? "border-white/50 bg-white/10 text-white"
+                            : "border-steel/40 hover:border-steel bg-dusk/50 hover:bg-dusk text-fog"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {question.type === "WRITTEN" && (
+                  <div className="ml-12">
+                    <input
+                      type="text"
+                      value={answers[question.id] || ""}
+                      onChange={(e) =>
+                        setAnswers((prev) => ({
+                          ...prev,
+                          [question.id]: e.target.value,
+                        }))
+                      }
+                      placeholder="Type your answer..."
+                      className="w-full bg-dusk border border-steel/60 rounded-xl px-4 py-3.5 text-snow placeholder-smoke focus:border-white/30 focus:outline-none transition-colors"
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="mt-12 pb-8">
           <button
             onClick={handleSubmit}
             disabled={submitting}
             className="w-full flex items-center justify-center gap-2.5 bg-white text-black font-heading font-bold py-4 rounded-xl hover:shadow-lg hover:shadow-white/15 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
-            {submitting ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Send className="w-5 h-5" />
-            )}
+            {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
             {submitting ? "Submitting..." : "Submit Quiz"}
           </button>
           {answeredCount < totalCount && !submitting && (
             <p className="text-center text-smoke text-sm mt-3">
-              You have {totalCount - answeredCount} unanswered question
-              {totalCount - answeredCount !== 1 ? "s" : ""}
+              You have {totalCount - answeredCount} unanswered question{totalCount - answeredCount !== 1 ? "s" : ""}
             </p>
           )}
         </div>

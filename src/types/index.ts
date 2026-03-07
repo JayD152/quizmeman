@@ -1,7 +1,7 @@
 export interface StudySetCard {
   id: string
   title: string
-  type: "MULTIPLE_CHOICE" | "WRITTEN" | "TRUE_FALSE" | "MIXED" | "FLASHCARD"
+  type: "MULTIPLE_CHOICE" | "WRITTEN" | "TRUE_FALSE" | "MATCHING" | "MIXED" | "FLASHCARD"
   questionCount: number
   lastScore: number | null
   avgScore: number | null
@@ -12,9 +12,10 @@ export interface StudySetCard {
 export interface QuizQuestion {
   id: string
   text: string
-  type: "MULTIPLE_CHOICE" | "WRITTEN" | "TRUE_FALSE"
+  type: "MULTIPLE_CHOICE" | "WRITTEN" | "TRUE_FALSE" | "MATCHING"
   order: number
   choices: QuizChoice[]
+  matchRight?: string
 }
 
 export interface QuizChoice {

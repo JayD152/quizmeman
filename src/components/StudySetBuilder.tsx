@@ -18,10 +18,11 @@ import {
   AlertCircle,
   ToggleLeft,
   BookOpenText,
+  GitCompareArrows,
 } from "lucide-react"
 
-type QuestionType = "MULTIPLE_CHOICE" | "WRITTEN" | "TRUE_FALSE" | "FLASHCARD"
-type SetType = "MULTIPLE_CHOICE" | "WRITTEN" | "TRUE_FALSE" | "MIXED" | "FLASHCARD"
+type QuestionType = "MULTIPLE_CHOICE" | "WRITTEN" | "TRUE_FALSE" | "MATCHING" | "FLASHCARD"
+type SetType = "MULTIPLE_CHOICE" | "WRITTEN" | "TRUE_FALSE" | "MATCHING" | "MIXED" | "FLASHCARD"
 
 interface Choice {
   id: string
@@ -71,6 +72,16 @@ function makeTrueFalseQuestion(): Question {
   }
 }
 
+function makeMatchingQuestion(): Question {
+  return {
+    id: crypto.randomUUID(),
+    type: "MATCHING",
+    text: "",
+    choices: [],
+    correctAnswer: "",
+  }
+}
+
 function makeFlashcard(): Question {
   return {
     id: crypto.randomUUID(),
@@ -85,6 +96,7 @@ function makeQuestionForType(type: QuestionType): Question {
   if (type === "MULTIPLE_CHOICE") return makeMCQuestion()
   if (type === "WRITTEN") return makeWrittenQuestion()
   if (type === "TRUE_FALSE") return makeTrueFalseQuestion()
+  if (type === "MATCHING") return makeMatchingQuestion()
   return makeFlashcard()
 }
 
@@ -92,6 +104,7 @@ function questionTypeLabel(type: QuestionType): string {
   if (type === "MULTIPLE_CHOICE") return "Multiple Choice"
   if (type === "WRITTEN") return "Written"
   if (type === "TRUE_FALSE") return "True / False"
+  if (type === "MATCHING") return "Matching"
   return "Flashcard"
 }
 
@@ -115,6 +128,8 @@ export default function StudySetBuilder() {
       setQuestions([makeWrittenQuestion()])
     } else if (type === "TRUE_FALSE") {
       setQuestions([makeTrueFalseQuestion()])
+    } else if (type === "MATCHING") {
+      setQuestions([makeMatchingQuestion()])
     } else if (type === "FLASHCARD") {
       setQuestions([makeFlashcard()])
     } else {
@@ -242,6 +257,10 @@ export default function StudySetBuilder() {
         setError(`Question ${i + 1} needs TRUE or FALSE as the answer`)
         return
       }
+      if (q.type === "MATCHING" && !q.correctAnswer.trim()) {
+        setError(`Question ${i + 1} needs a matching right-side term`)
+        return
+      }
       if (q.type === "FLASHCARD" && !q.correctAnswer.trim()) {
         setError(`Card ${i + 1} is missing a definition`)
         return
@@ -271,7 +290,7 @@ export default function StudySetBuilder() {
                   }))
                 : undefined,
             correctAnswer:
-              q.type === "WRITTEN" || q.type === "FLASHCARD"
+              q.type === "WRITTEN" || q.type === "MATCHING" || q.type === "FLASHCARD"
                 ? q.correctAnswer.trim()
                 : q.type === "TRUE_FALSE"
                 ? q.correctAnswer.trim().toUpperCase()
@@ -305,7 +324,7 @@ export default function StudySetBuilder() {
         </h1>
         <p className="text-fog text-lg mb-12">Choose the study mode you want to build.</p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
           <button
             onClick={() => selectType("MULTIPLE_CHOICE")}
             className="group bg-night border border-steel/50 rounded-2xl p-6 text-left hover:border-white/30 hover:shadow-lg hover:shadow-white/5 transition-all duration-300 cursor-pointer"
@@ -337,6 +356,17 @@ export default function StudySetBuilder() {
             </div>
             <h3 className="font-heading text-lg font-bold text-snow mb-2">True / False</h3>
             <p className="text-fog text-sm leading-relaxed">Fast binary checks for factual recall.</p>
+          </button>
+
+          <button
+            onClick={() => selectType("MATCHING")}
+            className="group bg-night border border-steel/50 rounded-2xl p-6 text-left hover:border-white/30 hover:shadow-lg hover:shadow-white/5 transition-all duration-300 cursor-pointer"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 group-hover:bg-white/10 transition-colors">
+              <GitCompareArrows className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="font-heading text-lg font-bold text-snow mb-2">Matching</h3>
+            <p className="text-fog text-sm leading-relaxed">Pair each left term with the correct right term.</p>
           </button>
 
           <button
@@ -454,7 +484,7 @@ export default function StudySetBuilder() {
               type="text"
               value={q.text}
               onChange={(e) => updateQuestionText(q.id, e.target.value)}
-              placeholder={q.type === "FLASHCARD" ? "Term" : "Enter your question..."}
+              placeholder={q.type === "FLASHCARD" ? "Term" : q.type === "MATCHING" ? "Left-side term" : "Enter your question..."}
               className="w-full bg-dusk border border-steel/60 rounded-xl px-4 py-3 text-snow placeholder-smoke focus:border-white/30 focus:outline-none transition-colors mb-4"
             />
 
@@ -580,6 +610,21 @@ export default function StudySetBuilder() {
                 />
               </div>
             )}
+
+            {q.type === "MATCHING" && (
+              <div>
+                <label className="text-xs text-fog mb-1.5 block font-medium uppercase tracking-wider">
+                  Matching Right Term
+                </label>
+                <input
+                  type="text"
+                  value={q.correctAnswer}
+                  onChange={(e) => updateCorrectAnswer(q.id, e.target.value)}
+                  placeholder="Right-side matching term"
+                  className="w-full bg-dusk border border-steel/60 rounded-xl px-4 py-3 text-snow placeholder-smoke focus:border-white/30 focus:outline-none transition-colors"
+                />
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -619,6 +664,8 @@ export default function StudySetBuilder() {
                   ? "WRITTEN"
                   : setType === "TRUE_FALSE"
                   ? "TRUE_FALSE"
+                  : setType === "MATCHING"
+                  ? "MATCHING"
                   : "FLASHCARD"
               )
             }

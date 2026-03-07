@@ -46,13 +46,14 @@ export default async function TakePage({
   let questions = studySet.questions.map((q: PrismaQuestion) => ({
     id: q.id,
     text: q.text,
-    type: q.type as "MULTIPLE_CHOICE" | "WRITTEN" | "TRUE_FALSE",
+    type: q.type as "MULTIPLE_CHOICE" | "WRITTEN" | "TRUE_FALSE" | "MATCHING",
     order: q.order,
     choices: q.choices.map((c: PrismaChoice) => ({
       id: c.id,
       text: c.text,
       order: c.order,
     })),
+    matchRight: q.type === "MATCHING" ? q.correctAnswer || "" : undefined,
   }))
 
   // Shuffle if enabled

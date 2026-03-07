@@ -260,6 +260,21 @@ export default async function ResultPage({
                     )
                   })}
                 </div>
+              ) : question.type === "MATCHING" ? (
+                <div className="ml-8 space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-smoke">Matched to:</span>
+                    <span className={isCorrect ? "text-white" : "text-smoke"}>
+                      {answer.writtenAnswer || "(blank)"}
+                    </span>
+                  </div>
+                  {!isCorrect && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-smoke">Correct pair:</span>
+                      <span className="text-white">{question.correctAnswer}</span>
+                    </div>
+                  )}
+                </div>
               ) : question.type === "TRUE_FALSE" ? (
                 <div className="ml-8 space-y-2">
                   <div className="flex items-center gap-2 text-sm">
