@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth-options"
 import { prisma } from "@/lib/prisma"
+import { isValidMatchingPayload } from "@/lib/matching"
 import { z } from "zod"
 
 const optionalImageUrlSchema = z.union([z.string().url(), z.literal(""), z.undefined()])
@@ -50,16 +51,35 @@ const updateSetSchema = z
         }
       }
 
-      if (
-        question.type === "WRITTEN" ||
-        question.type === "MATCHING" ||
-        question.type === "FLASHCARD"
-      ) {
+      if (question.type === "WRITTEN" || question.type === "FLASHCARD") {
         if (!question.correctAnswer?.trim()) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ["questions", i, "correctAnswer"],
-            message: "Written, matching, and flashcard questions require a correct answer.",
+            message: "Written and flashcard questions require a correct answer.",
+          })
+        }
+      }
+
+      if (question.type === "MATCHING") {
+        const choicesCount = question.choices?.length || 0
+        const hasLegacyShape = choicesCount === 0 && Boolean(question.correctAnswer?.trim())
+
+        if (hasLegacyShape) continue
+
+        if (!question.choices || choicesCount < 2) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["questions", i, "choices"],
+            message: "Matching questions need at least 2 left-side terms.",
+          })
+        }
+
+        if (!isValidMatchingPayload(question.correctAnswer, choicesCount)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["questions", i, "correctAnswer"],
+            message: "Matching questions require a right-side term for every left-side term.",
           })
         }
       }
@@ -217,11 +237,11 @@ export async function PATCH(
                   : q.correctAnswer?.trim()
                 : null,
             choices:
-              q.type === "MULTIPLE_CHOICE" && q.choices
+              (q.type === "MULTIPLE_CHOICE" || q.type === "MATCHING") && q.choices
                 ? {
                     create: q.choices.map((c) => ({
                       text: c.text,
-                      isCorrect: c.isCorrect,
+                      isCorrect: q.type === "MULTIPLE_CHOICE" ? c.isCorrect : false,
                       order: c.order,
                     })),
                   }

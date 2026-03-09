@@ -21,6 +21,7 @@ import {
   GitCompareArrows,
   Image as ImageIcon,
 } from "lucide-react"
+import { extractMatchingPairs, serializeMatchingRightTerms } from "@/lib/matching"
 
 type QuestionType = "MULTIPLE_CHOICE" | "WRITTEN" | "TRUE_FALSE" | "MATCHING" | "FLASHCARD"
 type SetType = "MULTIPLE_CHOICE" | "WRITTEN" | "TRUE_FALSE" | "MATCHING" | "MIXED" | "FLASHCARD"
@@ -29,6 +30,7 @@ interface Choice {
   id: string
   text: string
   isCorrect: boolean
+  matchRight?: string
 }
 
 interface Question {
@@ -107,7 +109,10 @@ function makeMatchingQuestion(): Question {
     type: "MATCHING",
     text: "",
     imageUrl: "",
-    choices: [],
+    choices: [
+      { ...makeChoice(), matchRight: "" },
+      { ...makeChoice(), matchRight: "" },
+    ],
     correctAnswer: "",
   }
 }
@@ -150,18 +155,46 @@ function isValidImageUrl(url: string): boolean {
 }
 
 function mapInitialQuestions(initialData: StudySetBuilderInitialData): Question[] {
-  return initialData.questions.map((q) => ({
-    id: q.id,
-    type: q.type,
-    text: q.text,
-    imageUrl: q.imageUrl || "",
-    choices: q.choices.map((choice) => ({
-      id: choice.id,
-      text: choice.text,
-      isCorrect: choice.isCorrect,
-    })),
-    correctAnswer: q.correctAnswer || (q.type === "TRUE_FALSE" ? "TRUE" : ""),
-  }))
+  return initialData.questions.map((q) => {
+    if (q.type === "MATCHING") {
+      const pairs = extractMatchingPairs({
+        text: q.text,
+        correctAnswer: q.correctAnswer,
+        choices: q.choices.map((choice, index) => ({
+          id: choice.id,
+          text: choice.text,
+          order: index,
+        })),
+      })
+
+      return {
+        id: q.id,
+        type: q.type,
+        text: q.text,
+        imageUrl: q.imageUrl || "",
+        choices: pairs.map((pair) => ({
+          id: pair.leftId,
+          text: pair.left,
+          isCorrect: false,
+          matchRight: pair.right,
+        })),
+        correctAnswer: "",
+      }
+    }
+
+    return {
+      id: q.id,
+      type: q.type,
+      text: q.text,
+      imageUrl: q.imageUrl || "",
+      choices: q.choices.map((choice) => ({
+        id: choice.id,
+        text: choice.text,
+        isCorrect: choice.isCorrect,
+      })),
+      correctAnswer: q.correctAnswer || (q.type === "TRUE_FALSE" ? "TRUE" : ""),
+    }
+  })
 }
 
 export default function StudySetBuilder({ initialData }: StudySetBuilderProps) {
@@ -266,6 +299,50 @@ export default function StudySetBuilder({ initialData }: StudySetBuilderProps) {
     )
   }
 
+  const updateMatchingPair = (questionId: string, pairId: string, updates: { left?: string; right?: string }) => {
+    setQuestions((prev) =>
+      prev.map((q) => {
+        if (q.id !== questionId || q.type !== "MATCHING") return q
+        return {
+          ...q,
+          choices: q.choices.map((pair) =>
+            pair.id === pairId
+              ? {
+                  ...pair,
+                  text: updates.left ?? pair.text,
+                  matchRight: updates.right ?? pair.matchRight ?? "",
+                }
+              : pair
+          ),
+        }
+      })
+    )
+  }
+
+  const addMatchingPairs = (questionId: string, count: number) => {
+    setQuestions((prev) =>
+      prev.map((q) => {
+        if (q.id !== questionId || q.type !== "MATCHING") return q
+        const remaining = 8 - q.choices.length
+        const toAdd = Math.min(count, remaining)
+        const newPairs = Array.from({ length: toAdd }, () => ({
+          ...makeChoice(),
+          matchRight: "",
+        }))
+        return { ...q, choices: [...q.choices, ...newPairs] }
+      })
+    )
+  }
+
+  const removeMatchingPair = (questionId: string, pairId: string) => {
+    setQuestions((prev) =>
+      prev.map((q) => {
+        if (q.id !== questionId || q.type !== "MATCHING") return q
+        return { ...q, choices: q.choices.filter((pair) => pair.id !== pairId) }
+      })
+    )
+  }
+
   const addChoices = (questionId: string, count: number) => {
     setQuestions((prev) =>
       prev.map((q) => {
@@ -329,9 +406,15 @@ export default function StudySetBuilder({ initialData }: StudySetBuilderProps) {
         setError(`Question ${i + 1} needs TRUE or FALSE as the answer`)
         return
       }
-      if (q.type === "MATCHING" && !q.correctAnswer.trim()) {
-        setError(`Question ${i + 1} needs a matching right-side term`)
-        return
+      if (q.type === "MATCHING") {
+        if (q.choices.length < 2) {
+          setError(`Question ${i + 1} needs at least 2 matching pairs`)
+          return
+        }
+        if (q.choices.some((pair) => !pair.text.trim() || !(pair.matchRight || "").trim())) {
+          setError(`Question ${i + 1} has an incomplete matching pair`)
+          return
+        }
       }
       if (q.type === "FLASHCARD" && !q.correctAnswer.trim()) {
         setError(`Card ${i + 1} is missing a definition`)
@@ -358,15 +441,17 @@ export default function StudySetBuilder({ initialData }: StudySetBuilderProps) {
             type: q.type,
             order: i,
             choices:
-              q.type === "MULTIPLE_CHOICE"
+              q.type === "MULTIPLE_CHOICE" || q.type === "MATCHING"
                 ? q.choices.map((c, ci) => ({
                     text: c.text.trim(),
-                    isCorrect: c.isCorrect,
+                    isCorrect: q.type === "MULTIPLE_CHOICE" ? c.isCorrect : false,
                     order: ci,
                   }))
                 : undefined,
             correctAnswer:
-              q.type === "WRITTEN" || q.type === "MATCHING" || q.type === "FLASHCARD"
+              q.type === "MATCHING"
+                ? serializeMatchingRightTerms(q.choices.map((pair) => (pair.matchRight || "").trim()))
+                : q.type === "WRITTEN" || q.type === "FLASHCARD"
                 ? q.correctAnswer.trim()
                 : q.type === "TRUE_FALSE"
                 ? q.correctAnswer.trim().toUpperCase()
@@ -561,7 +646,7 @@ export default function StudySetBuilder({ initialData }: StudySetBuilderProps) {
               type="text"
               value={q.text}
               onChange={(e) => updateQuestionText(q.id, e.target.value)}
-              placeholder={q.type === "FLASHCARD" ? "Term" : q.type === "MATCHING" ? "Left-side term" : "Enter your question..."}
+              placeholder={q.type === "FLASHCARD" ? "Term" : q.type === "MATCHING" ? "Matching prompt (e.g. Match each country to its capital)" : "Enter your question..."}
               className="w-full bg-dusk border border-steel/60 rounded-xl px-4 py-3 text-snow placeholder-smoke focus:border-white/30 focus:outline-none transition-colors mb-3"
             />
 
@@ -702,15 +787,58 @@ export default function StudySetBuilder({ initialData }: StudySetBuilderProps) {
             {q.type === "MATCHING" && (
               <div>
                 <label className="text-xs text-fog mb-1.5 block font-medium uppercase tracking-wider">
-                  Matching Right Term
+                  Matching Pairs
                 </label>
-                <input
-                  type="text"
-                  value={q.correctAnswer}
-                  onChange={(e) => updateCorrectAnswer(q.id, e.target.value)}
-                  placeholder="Right-side matching term"
-                  className="w-full bg-dusk border border-steel/60 rounded-xl px-4 py-3 text-snow placeholder-smoke focus:border-white/30 focus:outline-none transition-colors"
-                />
+                <div className="space-y-2.5">
+                  {q.choices.map((pair, pairIndex) => (
+                    <div key={pair.id} className="flex flex-col sm:flex-row gap-2.5">
+                      <input
+                        type="text"
+                        value={pair.text}
+                        onChange={(e) => updateMatchingPair(q.id, pair.id, { left: e.target.value })}
+                        placeholder={`Left term ${pairIndex + 1}`}
+                        className="flex-1 bg-dusk border border-steel/60 rounded-lg px-4 py-2.5 text-snow text-sm placeholder-smoke focus:border-white/30 focus:outline-none transition-colors"
+                      />
+                      <input
+                        type="text"
+                        value={pair.matchRight || ""}
+                        onChange={(e) => updateMatchingPair(q.id, pair.id, { right: e.target.value })}
+                        placeholder={`Right term ${pairIndex + 1}`}
+                        className="flex-1 bg-dusk border border-steel/60 rounded-lg px-4 py-2.5 text-snow text-sm placeholder-smoke focus:border-white/30 focus:outline-none transition-colors"
+                      />
+                      {q.choices.length > 2 && (
+                        <button
+                          onClick={() => removeMatchingPair(q.id, pair.id)}
+                          className="text-smoke hover:text-white transition-colors p-1 cursor-pointer self-center"
+                          type="button"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {q.choices.length < 8 && (
+                  <div className="flex gap-2 mt-3">
+                    {q.choices.length + 2 <= 8 && (
+                      <button
+                        onClick={() => addMatchingPairs(q.id, 2)}
+                        className="text-xs text-fog hover:text-white border border-steel/40 rounded-lg px-3 py-1.5 hover:border-white/20 transition-colors cursor-pointer"
+                        type="button"
+                      >
+                        +2 pairs
+                      </button>
+                    )}
+                    <button
+                      onClick={() => addMatchingPairs(q.id, 1)}
+                      className="text-xs text-fog hover:text-white border border-steel/40 rounded-lg px-3 py-1.5 hover:border-white/20 transition-colors cursor-pointer"
+                      type="button"
+                    >
+                      +1 pair
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

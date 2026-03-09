@@ -3,8 +3,8 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, Clock, Send, AlertTriangle, ArrowRight, Link2, Unlink } from "lucide-react"
-import type { QuizData } from "@/types"
+import { Loader2, Clock, Send, AlertTriangle, ArrowRight, Unlink } from "lucide-react"
+import type { QuizData, QuizQuestion } from "@/types"
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
@@ -21,40 +21,49 @@ function shuffleArray<T>(arr: T[]): T[] {
   return copy
 }
 
+function isQuestionAnswered(
+  question: QuizQuestion,
+  answers: Record<string, string>,
+  matchingAnswers: Record<string, Record<string, string>>
+): boolean {
+  if (question.type === "MATCHING") {
+    const pairs = question.matchingPairs || []
+    const submittedMap = matchingAnswers[question.id] || {}
+    return pairs.length > 0 && pairs.every((pair) => Boolean((submittedMap[pair.leftId] || "").trim()))
+  }
+
+  if (question.type === "WRITTEN") {
+    return Boolean((answers[question.id] || "").trim())
+  }
+
+  return Boolean(answers[question.id])
+}
+
 export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
   const router = useRouter()
   const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [matchingAnswers, setMatchingAnswers] = useState<Record<string, Record<string, string>>>({})
   const [timeRemaining, setTimeRemaining] = useState<number | null>(studySet.timeLimit)
   const [submitting, setSubmitting] = useState(false)
-  const [activeLeftId, setActiveLeftId] = useState<string | null>(null)
+  const [activeMatchTarget, setActiveMatchTarget] = useState<{ questionId: string; leftId: string } | null>(null)
   const [modalImageUrl, setModalImageUrl] = useState<string | null>(null)
   const startTimeRef = useRef(Date.now())
   const hasSubmittedRef = useRef(false)
 
-  const matchingQuestions = useMemo(
-    () => studySet.questions.filter((q) => q.type === "MATCHING"),
-    [studySet.questions]
-  )
-  const hasMatchingQuestions = matchingQuestions.length > 0
-  const nonMatchingQuestions = useMemo(
-    () => studySet.questions.filter((q) => q.type !== "MATCHING"),
-    [studySet.questions]
-  )
+  const matchingRightOptionsByQuestion = useMemo(() => {
+    const entries = studySet.questions
+      .filter((question) => question.type === "MATCHING")
+      .map((question) => {
+        const rightTerms = (question.matchingPairs || []).map((pair) => pair.right)
+        const shuffled = shuffleArray(rightTerms).map((text, index) => ({
+          id: `${question.id}-right-${index}`,
+          text,
+        }))
+        return [question.id, shuffled] as const
+      })
 
-  const matchingRightOptions = useMemo(() => {
-    if (!hasMatchingQuestions) return []
-    return shuffleArray(
-      matchingQuestions.map((q) => ({
-        id: q.id,
-        text: q.matchRight || "",
-      }))
-    )
-  }, [hasMatchingQuestions, matchingQuestions])
-
-  const questionIndexById = useMemo(
-    () => Object.fromEntries(matchingQuestions.map((q, index) => [q.id, index + 1])),
-    [matchingQuestions]
-  )
+    return Object.fromEntries(entries)
+  }, [studySet.questions])
 
   const handleSubmit = useCallback(async () => {
     if (hasSubmittedRef.current || submitting) return
@@ -68,17 +77,26 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          answers: studySet.questions.map((q) => ({
-            questionId: q.id,
-            ...(q.type === "MULTIPLE_CHOICE"
-              ? { selectedChoiceId: answers[q.id] || null }
-              : q.type === "MATCHING"
-              ? {
-                  writtenAnswer:
-                    studySet.questions.find((candidate) => candidate.id === answers[q.id])?.matchRight || "",
-                }
-              : { writtenAnswer: answers[q.id] || "" }),
-          })),
+          answers: studySet.questions.map((q) => {
+            if (q.type === "MULTIPLE_CHOICE") {
+              return {
+                questionId: q.id,
+                selectedChoiceId: answers[q.id] || null,
+              }
+            }
+
+            if (q.type === "MATCHING") {
+              return {
+                questionId: q.id,
+                writtenAnswer: JSON.stringify(matchingAnswers[q.id] || {}),
+              }
+            }
+
+            return {
+              questionId: q.id,
+              writtenAnswer: answers[q.id] || "",
+            }
+          }),
           timeTaken,
         }),
       })
@@ -92,7 +110,7 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
       setSubmitting(false)
       alert("Failed to submit. Please try again.")
     }
-  }, [answers, studySet, submitting, router])
+  }, [answers, matchingAnswers, studySet, submitting, router])
 
   useEffect(() => {
     if (!studySet.timeLimit) return
@@ -116,7 +134,9 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
     }
   }, [timeRemaining, handleSubmit])
 
-  const answeredCount = Object.keys(answers).length
+  const answeredCount = studySet.questions.filter((question) =>
+    isQuestionAnswered(question, answers, matchingAnswers)
+  ).length
   const totalCount = studySet.questions.length
   const progress = (answeredCount / totalCount) * 100
 
@@ -189,244 +209,233 @@ export default function TakeQuiz({ studySet }: { studySet: QuizData }) {
           <div className="h-full bg-white rounded-full transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
         </div>
 
-        {hasMatchingQuestions && (
-          <div className="bg-night border border-steel/50 rounded-2xl p-6 sm:p-8 animate-slide-up">
-            <div className="flex items-start gap-4 mb-6">
-              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-dusk text-white font-heading font-bold text-sm shrink-0">
-                <Link2 className="w-4 h-4" />
-              </span>
-              <div>
-                <h2 className="font-heading text-lg font-semibold text-snow leading-relaxed mb-1">Matching</h2>
-                <p className="text-fog text-sm">
-                  Click the arrow next to a left term, then click a right term to connect them. Double-click an image to zoom.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-3">
-                {matchingQuestions.map((question, index) => {
-                  const connectedRightId = answers[question.id]
-                  const pairNumber = questionIndexById[question.id]
-                  return (
-                    <div
-                      key={question.id}
-                      className={`rounded-xl border px-4 py-3 transition-colors ${
-                        activeLeftId === question.id
-                          ? "border-white/30 bg-white/10"
-                          : "border-steel/40 bg-dusk/40"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setActiveLeftId((prev) => (prev === question.id ? null : question.id))}
-                          className="w-8 h-8 rounded-lg border border-white/20 text-white hover:bg-white/10 transition-colors flex items-center justify-center cursor-pointer"
-                          title="Select this term"
-                        >
-                          <ArrowRight className="w-4 h-4" />
-                        </button>
-                        <span className="text-snow text-sm font-medium flex-1">{question.text}</span>
-                        {question.imageUrl && (
-                          <img
-                            src={question.imageUrl}
-                            alt="Question reference"
-                            onDoubleClick={() => setModalImageUrl(question.imageUrl || null)}
-                            className="w-10 h-10 object-cover rounded-md border border-steel/50 cursor-zoom-in"
-                          />
-                        )}
-                        {connectedRightId && (
-                          <span className={`text-xs font-bold px-2 py-1 rounded-full border ${leftBadgeClass[(index + 1) % leftBadgeClass.length]}`}>
-                            {pairNumber}
-                          </span>
-                        )}
-                        {connectedRightId && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setAnswers((prev) => {
-                                const next = { ...prev }
-                                delete next[question.id]
-                                return next
-                              })
-                            }
-                            className="text-smoke hover:text-white transition-colors cursor-pointer"
-                            title="Clear match"
-                          >
-                            <Unlink className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="space-y-3">
-                {matchingRightOptions.map((option) => {
-                  const linkedLeftId = Object.entries(answers).find(([, rightId]) => rightId === option.id)?.[0]
-                  const linkedNumber = linkedLeftId ? questionIndexById[linkedLeftId] : null
-
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      onClick={() => {
-                        if (!activeLeftId) return
-                        setAnswers((prev) => {
-                          const next = { ...prev }
-
-                          for (const [leftId, rightId] of Object.entries(next)) {
-                            if (rightId === option.id) {
-                              delete next[leftId]
-                            }
-                          }
-
-                          next[activeLeftId] = option.id
-                          return next
-                        })
-                        setActiveLeftId(null)
-                      }}
-                      className={`w-full text-left rounded-xl border px-4 py-3 transition-all duration-200 ${
-                        activeLeftId
-                          ? "border-white/20 hover:border-white/40 bg-dusk/40"
-                          : "border-steel/40 bg-dusk/30"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-fog text-sm flex-1">{option.text}</span>
-                        {linkedNumber !== null && (
-                          <span className={`text-xs font-bold px-2 py-1 rounded-full border ${rightBadgeClass[linkedNumber % rightBadgeClass.length]}`}>
-                            {linkedNumber}
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {!activeLeftId && (
-              <p className="text-sm text-smoke mt-5">Select a left term to start linking.</p>
-            )}
-            {activeLeftId && (
-              <p className="text-sm text-white mt-5">Now choose a right term to complete this match.</p>
-            )}
-          </div>
-        )}
-
-        {nonMatchingQuestions.length > 0 && (
-          <div className="space-y-8">
-            {nonMatchingQuestions.map((question, index) => (
-              <div
-                key={question.id}
-                className="bg-night border border-steel/50 rounded-2xl p-6 sm:p-8 animate-slide-up"
-                style={{ animationDelay: `${index * 60}ms` }}
-              >
-                <div className="flex items-start gap-4 mb-6">
-                  <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-dusk text-white font-heading font-bold text-sm shrink-0">
-                    {index + 1}
-                  </span>
-                  <div className="w-full">
-                    <h2 className="font-heading text-lg font-semibold text-snow leading-relaxed">{question.text}</h2>
-                    {question.imageUrl && (
-                      <img
-                        src={question.imageUrl}
-                        alt="Question reference"
-                        onDoubleClick={() => setModalImageUrl(question.imageUrl || null)}
-                        className="mt-3 max-h-36 w-auto rounded-lg border border-steel/50 object-contain cursor-zoom-in"
-                      />
-                    )}
-                  </div>
+        <div className="space-y-8">
+          {studySet.questions.map((question, index) => (
+            <div
+              key={question.id}
+              className="bg-night border border-steel/50 rounded-2xl p-6 sm:p-8 animate-slide-up"
+              style={{ animationDelay: `${index * 60}ms` }}
+            >
+              <div className="flex items-start gap-4 mb-6">
+                <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-dusk text-white font-heading font-bold text-sm shrink-0">
+                  {index + 1}
+                </span>
+                <div className="w-full">
+                  <h2 className="font-heading text-lg font-semibold text-snow leading-relaxed">{question.text}</h2>
+                  {question.imageUrl && (
+                    <img
+                      src={question.imageUrl}
+                      alt="Question reference"
+                      onDoubleClick={() => setModalImageUrl(question.imageUrl || null)}
+                      className="mt-3 max-h-36 w-auto rounded-lg border border-steel/50 object-contain cursor-zoom-in"
+                    />
+                  )}
                 </div>
+              </div>
 
-                {question.type === "MULTIPLE_CHOICE" && (
-                  <div className="space-y-3 ml-12">
-                    {question.choices.map((choice) => (
-                      <label
-                        key={choice.id}
-                        className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all duration-200 ${
-                          answers[question.id] === choice.id
-                            ? "border-white/50 bg-white/5 shadow-sm shadow-white/10"
-                            : "border-steel/40 hover:border-steel bg-dusk/50 hover:bg-dusk"
+              {question.type === "MULTIPLE_CHOICE" && (
+                <div className="space-y-3 ml-12">
+                  {question.choices.map((choice) => (
+                    <label
+                      key={choice.id}
+                      className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all duration-200 ${
+                        answers[question.id] === choice.id
+                          ? "border-white/50 bg-white/5 shadow-sm shadow-white/10"
+                          : "border-steel/40 hover:border-steel bg-dusk/50 hover:bg-dusk"
+                      }`}
+                    >
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                          answers[question.id] === choice.id ? "border-white bg-white" : "border-steel"
                         }`}
                       >
-                        <div
-                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                            answers[question.id] === choice.id ? "border-white bg-white" : "border-steel"
-                          }`}
-                        >
-                          {answers[question.id] === choice.id && <div className="w-2 h-2 rounded-full bg-midnight" />}
-                        </div>
-                        <span className={`text-sm ${answers[question.id] === choice.id ? "text-snow" : "text-fog"}`}>
-                          {choice.text}
-                        </span>
-                        <input
-                          type="radio"
-                          name={question.id}
-                          value={choice.id}
-                          checked={answers[question.id] === choice.id}
-                          onChange={() =>
-                            setAnswers((prev) => ({
-                              ...prev,
-                              [question.id]: choice.id,
-                            }))
-                          }
-                          className="sr-only"
-                        />
-                      </label>
-                    ))}
-                  </div>
-                )}
-
-                {question.type === "TRUE_FALSE" && (
-                  <div className="ml-12 grid grid-cols-2 gap-3">
-                    {[
-                      { key: "TRUE", label: "True" },
-                      { key: "FALSE", label: "False" },
-                    ].map((option) => (
-                      <button
-                        key={option.key}
-                        onClick={() =>
+                        {answers[question.id] === choice.id && <div className="w-2 h-2 rounded-full bg-midnight" />}
+                      </div>
+                      <span className={`text-sm ${answers[question.id] === choice.id ? "text-snow" : "text-fog"}`}>
+                        {choice.text}
+                      </span>
+                      <input
+                        type="radio"
+                        name={question.id}
+                        value={choice.id}
+                        checked={answers[question.id] === choice.id}
+                        onChange={() =>
                           setAnswers((prev) => ({
                             ...prev,
-                            [question.id]: option.key,
+                            [question.id]: choice.id,
                           }))
                         }
-                        type="button"
-                        className={`p-4 rounded-xl border text-sm font-semibold transition-all duration-200 cursor-pointer ${
-                          answers[question.id] === option.key
-                            ? "border-white/50 bg-white/10 text-white"
-                            : "border-steel/40 hover:border-steel bg-dusk/50 hover:bg-dusk text-fog"
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                        className="sr-only"
+                      />
+                    </label>
+                  ))}
+                </div>
+              )}
 
-                {question.type === "WRITTEN" && (
-                  <div className="ml-12">
-                    <input
-                      type="text"
-                      value={answers[question.id] || ""}
-                      onChange={(e) =>
+              {question.type === "TRUE_FALSE" && (
+                <div className="ml-12 grid grid-cols-2 gap-3">
+                  {[
+                    { key: "TRUE", label: "True" },
+                    { key: "FALSE", label: "False" },
+                  ].map((option) => (
+                    <button
+                      key={option.key}
+                      onClick={() =>
                         setAnswers((prev) => ({
                           ...prev,
-                          [question.id]: e.target.value,
+                          [question.id]: option.key,
                         }))
                       }
-                      placeholder="Type your answer..."
-                      className="w-full bg-dusk border border-steel/60 rounded-xl px-4 py-3.5 text-snow placeholder-smoke focus:border-white/30 focus:outline-none transition-colors"
-                    />
+                      type="button"
+                      className={`p-4 rounded-xl border text-sm font-semibold transition-all duration-200 cursor-pointer ${
+                        answers[question.id] === option.key
+                          ? "border-white/50 bg-white/10 text-white"
+                          : "border-steel/40 hover:border-steel bg-dusk/50 hover:bg-dusk text-fog"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {question.type === "WRITTEN" && (
+                <div className="ml-12">
+                  <input
+                    type="text"
+                    value={answers[question.id] || ""}
+                    onChange={(e) =>
+                      setAnswers((prev) => ({
+                        ...prev,
+                        [question.id]: e.target.value,
+                      }))
+                    }
+                    placeholder="Type your answer..."
+                    className="w-full bg-dusk border border-steel/60 rounded-xl px-4 py-3.5 text-snow placeholder-smoke focus:border-white/30 focus:outline-none transition-colors"
+                  />
+                </div>
+              )}
+
+              {question.type === "MATCHING" && (
+                <div className="ml-0 sm:ml-12">
+                  <p className="text-fog text-sm mb-4">Choose a left term, then select a right term to connect it.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-3">
+                      {(question.matchingPairs || []).map((pair, pairIndex) => {
+                        const selectedMap = matchingAnswers[question.id] || {}
+                        const connectedRight = selectedMap[pair.leftId]
+                        const isActive =
+                          activeMatchTarget?.questionId === question.id && activeMatchTarget.leftId === pair.leftId
+
+                        return (
+                          <div
+                            key={pair.leftId}
+                            className={`rounded-xl border px-4 py-3 transition-colors ${
+                              isActive ? "border-white/30 bg-white/10" : "border-steel/40 bg-dusk/40"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setActiveMatchTarget((prev) =>
+                                    prev?.questionId === question.id && prev.leftId === pair.leftId
+                                      ? null
+                                      : { questionId: question.id, leftId: pair.leftId }
+                                  )
+                                }
+                                className="w-8 h-8 rounded-lg border border-white/20 text-white hover:bg-white/10 transition-colors flex items-center justify-center cursor-pointer"
+                                title="Select this term"
+                              >
+                                <ArrowRight className="w-4 h-4" />
+                              </button>
+                              <span className="text-snow text-sm font-medium flex-1">{pair.left}</span>
+                              {connectedRight && (
+                                <span className={`text-xs font-bold px-2 py-1 rounded-full border ${leftBadgeClass[pairIndex % leftBadgeClass.length]}`}>
+                                  {pairIndex + 1}
+                                </span>
+                              )}
+                              {connectedRight && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setMatchingAnswers((prev) => {
+                                      const nextQuestionMap = { ...(prev[question.id] || {}) }
+                                      delete nextQuestionMap[pair.leftId]
+                                      return { ...prev, [question.id]: nextQuestionMap }
+                                    })
+                                  }
+                                  className="text-smoke hover:text-white transition-colors cursor-pointer"
+                                  title="Clear match"
+                                >
+                                  <Unlink className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    <div className="space-y-3">
+                      {(matchingRightOptionsByQuestion[question.id] || []).map((option) => {
+                        const selectedMap = matchingAnswers[question.id] || {}
+                        const linkedLeftIndex = (question.matchingPairs || []).findIndex(
+                          (pair) => selectedMap[pair.leftId] === option.text
+                        )
+
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => {
+                              if (activeMatchTarget?.questionId !== question.id) return
+
+                              setMatchingAnswers((prev) => {
+                                const next = { ...(prev[question.id] || {}) }
+
+                                for (const [leftId, rightTerm] of Object.entries(next)) {
+                                  if (rightTerm === option.text) {
+                                    delete next[leftId]
+                                  }
+                                }
+
+                                next[activeMatchTarget.leftId] = option.text
+
+                                return {
+                                  ...prev,
+                                  [question.id]: next,
+                                }
+                              })
+
+                              setActiveMatchTarget(null)
+                            }}
+                            className={`w-full text-left rounded-xl border px-4 py-3 transition-all duration-200 ${
+                              activeMatchTarget?.questionId === question.id
+                                ? "border-white/20 hover:border-white/40 bg-dusk/40"
+                                : "border-steel/40 bg-dusk/30"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="text-fog text-sm flex-1">{option.text}</span>
+                              {linkedLeftIndex >= 0 && (
+                                <span
+                                  className={`text-xs font-bold px-2 py-1 rounded-full border ${rightBadgeClass[linkedLeftIndex % rightBadgeClass.length]}`}
+                                >
+                                  {linkedLeftIndex + 1}
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
 
         <div className="mt-12 pb-8">
           <button

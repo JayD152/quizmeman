@@ -2,6 +2,26 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth-options"
 import { prisma } from "@/lib/prisma"
+import { extractMatchingPairs } from "@/lib/matching"
+
+function parseSubmittedMatchingMap(raw: string | undefined): Record<string, string> {
+  if (!raw?.trim()) return {}
+
+  try {
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {}
+
+    const next: Record<string, string> = {}
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (key.trim().length === 0 || typeof value !== "string") continue
+      next[key] = value.trim()
+    }
+
+    return next
+  } catch {
+    return {}
+  }
+}
 
 export async function POST(
   request: Request,
@@ -37,6 +57,7 @@ export async function POST(
   }
 
   let totalCorrect = 0
+  let earnedPoints = 0
   const answerData: {
     questionId: string
     selectedChoiceId: string | null
@@ -51,6 +72,8 @@ export async function POST(
     if (!question) continue
 
     let isCorrect = false
+    let matchingPairsLength = 0
+    let matchingCorrectPairs = 0
 
     if (question.type === "MULTIPLE_CHOICE") {
       const correctChoice = question.choices.find((c: { isCorrect: boolean }) => c.isCorrect)
@@ -64,11 +87,36 @@ export async function POST(
         (ans.writtenAnswer || "").trim().toUpperCase() ===
         (question.correctAnswer || "").trim().toUpperCase()
     } else if (question.type === "MATCHING") {
+      const matchingPairs = extractMatchingPairs({
+        text: question.text,
+        correctAnswer: question.correctAnswer,
+        choices: question.choices.map((choice: { id: string; text: string; order: number }) => ({
+          id: choice.id,
+          text: choice.text,
+          order: choice.order,
+        })),
+      })
+      const submittedMap = parseSubmittedMatchingMap(ans.writtenAnswer)
+
+      matchingPairsLength = matchingPairs.length
+      matchingCorrectPairs = matchingPairs.filter((pair) => {
+        const submitted = (submittedMap[pair.leftId] || "").trim().toLowerCase()
+        return submitted.length > 0 && submitted === pair.right.trim().toLowerCase()
+      }).length
+
       isCorrect =
-        (ans.writtenAnswer || "").trim().toLowerCase() ===
-        (question.correctAnswer || "").trim().toLowerCase()
+        matchingPairs.length > 0 &&
+        matchingCorrectPairs === matchingPairs.length
     } else {
       continue
+    }
+
+    if (question.type === "MATCHING") {
+      if (matchingPairsLength > 0) {
+        earnedPoints += matchingCorrectPairs / matchingPairsLength
+      }
+    } else if (isCorrect) {
+      earnedPoints += 1
     }
 
     if (isCorrect) totalCorrect++
@@ -82,8 +130,7 @@ export async function POST(
   }
 
   const totalQuestions = studySet.questions.length
-  const score =
-    totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100 : 0
+  const score = totalQuestions > 0 ? (earnedPoints / totalQuestions) * 100 : 0
 
   const attempt = await prisma.attempt.create({
     data: {

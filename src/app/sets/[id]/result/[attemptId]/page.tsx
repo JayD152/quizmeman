@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { authOptions } from "@/lib/auth-options"
 import { prisma } from "@/lib/prisma"
+import { extractMatchingPairs } from "@/lib/matching"
 import {
   CheckCircle2,
   XCircle,
@@ -12,6 +13,25 @@ import {
   Target,
   Clock,
 } from "lucide-react"
+
+function parseSubmittedMatchingMap(raw: string | null): Record<string, string> {
+  if (!raw?.trim()) return {}
+
+  try {
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {}
+
+    const next: Record<string, string> = {}
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (key.trim().length === 0 || typeof value !== "string") continue
+      next[key] = value
+    }
+
+    return next
+  } catch {
+    return {}
+  }
+}
 
 function ScoreRing({ score }: { score: number }) {
   const radius = 58
@@ -262,18 +282,39 @@ export default async function ResultPage({
                 </div>
               ) : question.type === "MATCHING" ? (
                 <div className="ml-8 space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-smoke">Matched to:</span>
-                    <span className={isCorrect ? "text-white" : "text-smoke"}>
-                      {answer.writtenAnswer || "(blank)"}
-                    </span>
-                  </div>
-                  {!isCorrect && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-smoke">Correct pair:</span>
-                      <span className="text-white">{question.correctAnswer}</span>
-                    </div>
-                  )}
+                  {(() => {
+                    const pairs = extractMatchingPairs({
+                      text: question.text,
+                      correctAnswer: question.correctAnswer,
+                      choices: question.choices.map((choice) => ({
+                        id: choice.id,
+                        text: choice.text,
+                        order: choice.order,
+                      })),
+                    })
+                    const submittedMap = parseSubmittedMatchingMap(answer.writtenAnswer)
+
+                    return pairs.map((pair) => {
+                      const selected = submittedMap[pair.leftId] || ""
+                      const pairCorrect = selected.trim().toLowerCase() === pair.right.trim().toLowerCase()
+
+                      return (
+                        <div key={pair.leftId} className="border border-white/10 rounded-lg px-3 py-2">
+                          <div className="text-sm text-white mb-1">{pair.left}</div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-smoke">Your match:</span>
+                            <span className={pairCorrect ? "text-white" : "text-smoke"}>{selected || "(blank)"}</span>
+                          </div>
+                          {!pairCorrect && (
+                            <div className="flex items-center gap-2 text-xs mt-1">
+                              <span className="text-smoke">Correct:</span>
+                              <span className="text-white">{pair.right}</span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })
+                  })()}
                 </div>
               ) : question.type === "TRUE_FALSE" ? (
                 <div className="ml-8 space-y-2">

@@ -16,7 +16,12 @@ export interface QuizQuestion {
   type: "MULTIPLE_CHOICE" | "WRITTEN" | "TRUE_FALSE" | "MATCHING"
   order: number
   choices: QuizChoice[]
-  matchRight?: string
+  matchingPairs?: {
+    leftId: string
+    left: string
+    right: string
+    order: number
+  }[]
 }
 
 export interface QuizChoice {

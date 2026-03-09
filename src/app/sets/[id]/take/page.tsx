@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth"
 import { redirect } from "next/navigation"
 import { authOptions } from "@/lib/auth-options"
 import { prisma } from "@/lib/prisma"
+import { extractMatchingPairs } from "@/lib/matching"
 import TakeQuiz from "@/components/TakeQuiz"
 import type { QuizData } from "@/types"
 
@@ -45,6 +46,19 @@ export default async function TakePage({
   // Strip correct answers (don't send to client)
   let questions = studySet.questions.map((q: PrismaQuestion) => {
     const question = q as PrismaQuestion & { imageUrl?: string | null }
+    const matchingPairs =
+      q.type === "MATCHING"
+        ? extractMatchingPairs({
+            text: q.text,
+            correctAnswer: q.correctAnswer,
+            choices: q.choices.map((c: PrismaChoice) => ({
+              id: c.id,
+              text: c.text,
+              order: c.order,
+            })),
+          })
+        : undefined
+
     return {
     id: q.id,
     text: q.text,
@@ -56,7 +70,7 @@ export default async function TakePage({
       text: c.text,
       order: c.order,
     })),
-    matchRight: q.type === "MATCHING" ? q.correctAnswer || "" : undefined,
+    matchingPairs,
     }
   })
 
