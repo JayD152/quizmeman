@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { authOptions } from "@/lib/auth-options"
 import { prisma } from "@/lib/prisma"
-import { Plus, BookOpen, Target, TrendingUp, Layers, Pencil } from "lucide-react"
+import { Plus, BookOpen, Target, TrendingUp, Layers, Pencil, Upload } from "lucide-react"
 import { DeleteSetButton } from "@/components/DeleteSetButton"
 import ShareSetButton from "@/components/ShareSetButton"
 
@@ -59,13 +59,22 @@ export default async function DashboardPage() {
             Ready to study? Pick a set or create a new one.
           </p>
         </div>
-        <Link
-          href="/sets/new"
-          className="inline-flex items-center gap-2.5 bg-white text-black font-heading font-bold px-6 py-3.5 rounded-xl hover:shadow-lg hover:shadow-white/15 transition-all duration-300 hover:-translate-y-0.5 shrink-0"
-        >
-          <Plus className="w-5 h-5" />
-          Create New Set
-        </Link>
+        <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+          <Link
+            href="/share"
+            className="inline-flex items-center gap-2.5 border border-steel/60 bg-white/5 text-snow font-heading font-bold px-6 py-3.5 rounded-xl hover:bg-white hover:text-black transition-all duration-300 hover:-translate-y-0.5"
+          >
+            <Upload className="w-5 h-5" />
+            Import Set
+          </Link>
+          <Link
+            href="/sets/new"
+            className="inline-flex items-center gap-2.5 bg-white text-black font-heading font-bold px-6 py-3.5 rounded-xl hover:shadow-lg hover:shadow-white/15 transition-all duration-300 hover:-translate-y-0.5"
+          >
+            <Plus className="w-5 h-5" />
+            Create New Set
+          </Link>
+        </div>
       </div>
 
       {/* Empty State */}
@@ -80,13 +89,22 @@ export default async function DashboardPage() {
           <p className="text-fog mb-10 max-w-md mx-auto">
             Create your first study set to start building quizzes and tracking your progress.
           </p>
-          <Link
-            href="/sets/new"
-            className="inline-flex items-center gap-2.5 bg-white text-black font-heading font-bold px-8 py-4 rounded-xl hover:shadow-lg hover:shadow-white/15 transition-all duration-300"
-          >
-            <Plus className="w-5 h-5" />
-            Create Your First Set
-          </Link>
+          <div className="flex flex-col sm:flex-row justify-center gap-3">
+            <Link
+              href="/share"
+              className="inline-flex items-center justify-center gap-2.5 border border-steel/60 bg-white/5 text-snow font-heading font-bold px-8 py-4 rounded-xl hover:bg-white hover:text-black transition-all duration-300"
+            >
+              <Upload className="w-5 h-5" />
+              Import a Shared Set
+            </Link>
+            <Link
+              href="/sets/new"
+              className="inline-flex items-center justify-center gap-2.5 bg-white text-black font-heading font-bold px-8 py-4 rounded-xl hover:shadow-lg hover:shadow-white/15 transition-all duration-300"
+            >
+              <Plus className="w-5 h-5" />
+              Create Your First Set
+            </Link>
+          </div>
         </div>
       ) : (
         /* Study Set Grid */

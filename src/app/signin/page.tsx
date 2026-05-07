@@ -35,14 +35,8 @@ function SignInContent() {
       {/* Card */}
       <div className="relative bg-night/80 backdrop-blur-xl border border-steel/50 rounded-3xl p-10 sm:p-12 w-full max-w-md text-center animate-scale-in">
         {/* Logo */}
-        <div className="w-20 h-20 mx-auto mb-8 rounded-2xl bg-white flex items-center justify-center shadow-2xl shadow-white/10">
-          <span className="text-black font-heading font-extrabold text-3xl">
-            Q
-          </span>
-        </div>
-
         <h1 className="font-heading text-3xl sm:text-4xl font-bold text-snow mb-3 tracking-tight">
-          Welcome to Quiz<span className="text-white">Me</span>
+          Welcome to <span className="brand-neon text-white">QuizMe</span>
         </h1>
         <p className="text-fog text-lg mb-10 max-w-xs mx-auto leading-relaxed">
           Create custom quizzes and track your learning progress.
