@@ -1,9 +1,26 @@
 "use client"
 
+import { Suspense } from "react"
 import { signIn } from "next-auth/react"
+import { useSearchParams } from "next/navigation"
 import { ThemeToggle } from "@/components/ThemeToggle"
 
 export default function SignInPage() {
+  return (
+    <Suspense fallback={<SignInFallback />}>
+      <SignInContent />
+    </Suspense>
+  )
+}
+
+function SignInFallback() {
+  return <div className="min-h-screen bg-black" />
+}
+
+function SignInContent() {
+  const searchParams = useSearchParams()
+  const callbackUrl = searchParams.get("callbackUrl") || "/"
+
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-6">
       <div className="absolute top-6 right-6 z-10">
@@ -32,7 +49,7 @@ export default function SignInPage() {
         </p>
 
         <button
-          onClick={() => signIn("google", { callbackUrl: "/" })}
+          onClick={() => signIn("google", { callbackUrl })}
           className="w-full flex items-center justify-center gap-3 bg-white text-gray-800 font-semibold py-4 px-6 rounded-xl hover:bg-gray-50 hover:shadow-lg transition-all duration-200 cursor-pointer"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">

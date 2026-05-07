@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth-options"
 import { prisma } from "@/lib/prisma"
 import { Plus, BookOpen, Target, TrendingUp, Layers, Pencil } from "lucide-react"
 import { DeleteSetButton } from "@/components/DeleteSetButton"
+import ShareSetButton from "@/components/ShareSetButton"
 
 const TYPE_CONFIG = {
   MULTIPLE_CHOICE: { label: "Multiple Choice", color: "text-white bg-white/5 border-white/15" },
@@ -113,6 +114,7 @@ export default async function DashboardPage() {
                     >
                       <Pencil className="w-4 h-4" />
                     </Link>
+                    <ShareSetButton setId={set.id} />
                     <DeleteSetButton setId={set.id} />
                   </div>
                 </div>
