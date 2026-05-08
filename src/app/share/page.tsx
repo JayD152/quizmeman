@@ -70,7 +70,11 @@ export default function ShareLookupPage() {
             <button
               type="button"
               onClick={handleOpen}
-              className="inline-flex items-center justify-center gap-2.5 bg-white text-black font-heading font-bold px-6 py-3.5 rounded-xl hover:shadow-lg hover:shadow-white/15 transition-all duration-300"
+              className="inline-flex items-center justify-center gap-2.5 font-heading font-bold px-6 py-3.5 rounded-xl hover:shadow-lg transition-all duration-300"
+              style={{
+                background: "var(--button-primary-bg)",
+                color: "var(--button-primary-text)",
+              }}
             >
               Open
               <ArrowRight className="w-4 h-4" />
@@ -82,13 +86,37 @@ export default function ShareLookupPage() {
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
             href="/"
-            className="inline-flex items-center justify-center gap-2.5 border border-steel/60 bg-white/5 text-snow font-heading font-semibold px-6 py-3.5 rounded-xl hover:bg-white hover:text-black transition-all duration-300"
+            className="inline-flex items-center justify-center gap-2.5 border border-steel/60 font-heading font-semibold px-6 py-3.5 rounded-xl transition-all duration-300"
+            style={{
+              background: "var(--button-secondary-bg)",
+              color: "var(--button-secondary-text)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--button-primary-bg)";
+              e.currentTarget.style.color = "var(--button-primary-text)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "var(--button-secondary-bg)";
+              e.currentTarget.style.color = "var(--button-secondary-text)";
+            }}
           >
             Back to dashboard
           </Link>
           <Link
             href="/sets/new"
-            className="inline-flex items-center justify-center gap-2.5 border border-steel/60 bg-white/5 text-snow font-heading font-semibold px-6 py-3.5 rounded-xl hover:bg-white hover:text-black transition-all duration-300"
+            className="inline-flex items-center justify-center gap-2.5 border border-steel/60 font-heading font-semibold px-6 py-3.5 rounded-xl transition-all duration-300"
+            style={{
+              background: "var(--button-secondary-bg)",
+              color: "var(--button-secondary-text)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--button-primary-bg)";
+              e.currentTarget.style.color = "var(--button-primary-text)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "var(--button-secondary-bg)";
+              e.currentTarget.style.color = "var(--button-secondary-text)";
+            }}
           >
             Create new set
           </Link>

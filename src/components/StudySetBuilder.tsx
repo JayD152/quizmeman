@@ -491,8 +491,8 @@ export default function StudySetBuilder({ initialData }: StudySetBuilderProps) {
             onClick={() => selectType("MULTIPLE_CHOICE")}
             className="group bg-night border border-steel/50 rounded-2xl p-6 text-left hover:border-white/30 hover:shadow-lg hover:shadow-white/5 transition-all duration-300 cursor-pointer"
           >
-            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 group-hover:bg-white/10 transition-colors">
-              <CheckCircle2 className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 rounded-2xl border flex items-center justify-center mb-4 group-hover:transition-colors transition-colors" style={{ background: "var(--accent-bg-opacity)", borderColor: "var(--accent-border-opacity)" }}>
+              <CheckCircle2 className="w-6 h-6" style={{ color: "var(--icon-color)" }} />
             </div>
             <h3 className="font-heading text-lg font-bold text-snow mb-2">Multiple Choice</h3>
             <p className="text-fog text-sm leading-relaxed">Selectable options with one correct answer.</p>
@@ -502,8 +502,8 @@ export default function StudySetBuilder({ initialData }: StudySetBuilderProps) {
             onClick={() => selectType("WRITTEN")}
             className="group bg-night border border-steel/50 rounded-2xl p-6 text-left hover:border-white/30 hover:shadow-lg hover:shadow-white/5 transition-all duration-300 cursor-pointer"
           >
-            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 group-hover:bg-white/10 transition-colors">
-              <PenLine className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 rounded-2xl border flex items-center justify-center mb-4 group-hover:transition-colors transition-colors" style={{ background: "var(--accent-bg-opacity)", borderColor: "var(--accent-border-opacity)" }}>
+              <PenLine className="w-6 h-6" style={{ color: "var(--icon-color)" }} />
             </div>
             <h3 className="font-heading text-lg font-bold text-snow mb-2">Written</h3>
             <p className="text-fog text-sm leading-relaxed">Type the answer from memory with free-form text.</p>
@@ -513,8 +513,8 @@ export default function StudySetBuilder({ initialData }: StudySetBuilderProps) {
             onClick={() => selectType("TRUE_FALSE")}
             className="group bg-night border border-steel/50 rounded-2xl p-6 text-left hover:border-white/30 hover:shadow-lg hover:shadow-white/5 transition-all duration-300 cursor-pointer"
           >
-            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 group-hover:bg-white/10 transition-colors">
-              <ToggleLeft className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 rounded-2xl border flex items-center justify-center mb-4 group-hover:transition-colors transition-colors" style={{ background: "var(--accent-bg-opacity)", borderColor: "var(--accent-border-opacity)" }}>
+              <ToggleLeft className="w-6 h-6" style={{ color: "var(--icon-color)" }} />
             </div>
             <h3 className="font-heading text-lg font-bold text-snow mb-2">True / False</h3>
             <p className="text-fog text-sm leading-relaxed">Fast binary checks for factual recall.</p>
@@ -524,8 +524,8 @@ export default function StudySetBuilder({ initialData }: StudySetBuilderProps) {
             onClick={() => selectType("MATCHING")}
             className="group bg-night border border-steel/50 rounded-2xl p-6 text-left hover:border-white/30 hover:shadow-lg hover:shadow-white/5 transition-all duration-300 cursor-pointer"
           >
-            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 group-hover:bg-white/10 transition-colors">
-              <GitCompareArrows className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 rounded-2xl border flex items-center justify-center mb-4 group-hover:transition-colors transition-colors" style={{ background: "var(--accent-bg-opacity)", borderColor: "var(--accent-border-opacity)" }}>
+              <GitCompareArrows className="w-6 h-6" style={{ color: "var(--icon-color)" }} />
             </div>
             <h3 className="font-heading text-lg font-bold text-snow mb-2">Matching</h3>
             <p className="text-fog text-sm leading-relaxed">Pair each left term with the correct right term.</p>
@@ -535,8 +535,8 @@ export default function StudySetBuilder({ initialData }: StudySetBuilderProps) {
             onClick={() => selectType("MIXED")}
             className="group bg-night border border-steel/50 rounded-2xl p-6 text-left hover:border-white/30 hover:shadow-lg hover:shadow-white/5 transition-all duration-300 cursor-pointer"
           >
-            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 group-hover:bg-white/10 transition-colors">
-              <Layers className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 rounded-2xl border flex items-center justify-center mb-4 group-hover:transition-colors transition-colors" style={{ background: "var(--accent-bg-opacity)", borderColor: "var(--accent-border-opacity)" }}>
+              <Layers className="w-6 h-6" style={{ color: "var(--icon-color)" }} />
             </div>
             <h3 className="font-heading text-lg font-bold text-snow mb-2">Mixed Quiz</h3>
             <p className="text-fog text-sm leading-relaxed">Blend multiple choice, written, true/false, and matching.</p>
@@ -546,8 +546,8 @@ export default function StudySetBuilder({ initialData }: StudySetBuilderProps) {
             onClick={() => selectType("FLASHCARD")}
             className="group bg-night border border-steel/50 rounded-2xl p-6 text-left hover:border-white/30 hover:shadow-lg hover:shadow-white/5 transition-all duration-300 cursor-pointer"
           >
-            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 group-hover:bg-white/10 transition-colors">
-              <BookOpenText className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 rounded-2xl border flex items-center justify-center mb-4 group-hover:transition-colors transition-colors" style={{ background: "var(--accent-bg-opacity)", borderColor: "var(--accent-border-opacity)" }}>
+              <BookOpenText className="w-6 h-6" style={{ color: "var(--icon-color)" }} />
             </div>
             <h3 className="font-heading text-lg font-bold text-snow mb-2">Flashcards</h3>
             <p className="text-fog text-sm leading-relaxed">Build term-definition vocab sets for card review mode.</p>
@@ -609,7 +609,7 @@ export default function StudySetBuilder({ initialData }: StudySetBuilderProps) {
           onClick={() => setShuffle(!shuffle)}
           className={`flex items-center gap-2.5 border rounded-xl px-4 py-2.5 transition-all duration-200 cursor-pointer ${
             shuffle
-              ? "bg-white/10 border-white/30 text-white"
+              ? "bg-snow/10 border-snow/30 text-snow"
               : "bg-night border-steel/50 text-smoke hover:text-fog"
           }`}
         >
@@ -623,7 +623,7 @@ export default function StudySetBuilder({ initialData }: StudySetBuilderProps) {
           <div key={q.id} className="bg-night border border-steel/50 rounded-2xl p-6 animate-scale-in">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <span className="font-heading font-bold text-sm text-white">
+                <span className="font-heading font-bold text-sm text-snow">
                   {setType === "FLASHCARD" ? `Card ${index + 1}` : `Q${index + 1}`}
                 </span>
                 {(setType === "MIXED" || setType === "FLASHCARD") && (

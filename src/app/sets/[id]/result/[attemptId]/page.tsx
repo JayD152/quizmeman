@@ -34,11 +34,25 @@ function parseSubmittedMatchingMap(raw: string | null): Record<string, string> {
 }
 
 function ScoreRing({ score }: { score: number }) {
+  "use client"
   const radius = 58
   const circumference = 2 * Math.PI * radius
   const offset = circumference - (score / 100) * circumference
-  const color =
-    score >= 80 ? "#ffffff" : score >= 60 ? "#a3a3a3" : "#737373"
+  
+  // Determine color based on score
+  let colorVar = "--palette-snow"
+  if (score < 60) colorVar = "--palette-smoke"
+  else if (score < 80) colorVar = "--palette-fog"
+
+  const getColorFromVar = (varName: string): string => {
+    if (typeof window !== "undefined") {
+      return getComputedStyle(document.documentElement).getPropertyValue(varName).trim()
+    }
+    return "#ffffff"
+  }
+
+  const strokeColor = getColorFromVar(colorVar)
+  const backgroundColor = getColorFromVar("--palette-steel")
 
   return (
     <div className="relative inline-flex items-center justify-center">
@@ -48,7 +62,7 @@ function ScoreRing({ score }: { score: number }) {
           cy="80"
           r={radius}
           fill="none"
-          stroke="#1f1f1f"
+          stroke={backgroundColor}
           strokeWidth="10"
         />
         <circle
@@ -56,7 +70,7 @@ function ScoreRing({ score }: { score: number }) {
           cy="80"
           r={radius}
           fill="none"
-          stroke={color}
+          stroke={strokeColor}
           strokeWidth="10"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
@@ -68,8 +82,7 @@ function ScoreRing({ score }: { score: number }) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span
-          className="font-heading text-4xl font-extrabold"
-          style={{ color }}
+          className="font-heading text-4xl font-extrabold text-snow"
         >
           {Math.round(score)}%
         </span>
@@ -140,7 +153,7 @@ export default async function ResultPage({
           <MessageIcon
             className={`w-6 h-6 ${
               attempt.score >= 80
-                ? "text-white"
+                ? "text-snow"
                 : attempt.score >= 60
                 ? "text-fog"
                 : "text-smoke"
@@ -161,7 +174,7 @@ export default async function ResultPage({
             <p className="text-[10px] text-smoke uppercase tracking-widest font-semibold mb-1">
               Correct
             </p>
-            <p className="font-heading text-xl font-bold text-white">
+            <p className="font-heading text-xl font-bold text-snow">
               {attempt.totalCorrect}
               <span className="text-smoke text-sm font-normal">
                 /{attempt.totalQuestions}
@@ -218,7 +231,7 @@ export default async function ResultPage({
               {/* Question */}
               <div className="flex items-start gap-3 mb-4">
                 {isCorrect ? (
-                  <CheckCircle2 className="w-5 h-5 text-white shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-5 h-5 text-snow shrink-0 mt-0.5" />
                 ) : (
                   <XCircle className="w-5 h-5 text-smoke shrink-0 mt-0.5" />
                 )}
@@ -240,16 +253,16 @@ export default async function ResultPage({
                         key={choice.id}
                         className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm ${
                           isCorrectChoice
-                            ? "bg-white/10 text-white border border-white/20"
+                            ? "bg-snow/10 text-snow border border-snow/20"
                             : isSelected && !isCorrectChoice
-                            ? "bg-white/5 text-smoke border border-white/10"
+                            ? "bg-snow/5 text-smoke border border-snow/10"
                             : "text-smoke"
                         }`}
                       >
                         <div
                           className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
                             isCorrectChoice
-                              ? "border-white bg-white"
+                              ? "border-snow bg-snow"
                               : isSelected
                               ? "border-smoke bg-smoke"
                               : "border-steel"
@@ -259,15 +272,15 @@ export default async function ResultPage({
                             <div
                               className={`w-1.5 h-1.5 rounded-full ${
                                 isCorrectChoice
-                                  ? "bg-black"
-                                  : "bg-black"
+                                  ? "bg-midnight"
+                                  : "bg-midnight"
                               }`}
                             />
                           )}
                         </div>
                         <span>{choice.text}</span>
                         {isCorrectChoice && (
-                          <span className="ml-auto text-[10px] uppercase tracking-wider font-bold text-white">
+                          <span className="ml-auto text-[10px] uppercase tracking-wider font-bold text-snow">
                             Correct
                           </span>
                         )}
@@ -299,16 +312,16 @@ export default async function ResultPage({
                       const pairCorrect = selected.trim().toLowerCase() === pair.right.trim().toLowerCase()
 
                       return (
-                        <div key={pair.leftId} className="border border-white/10 rounded-lg px-3 py-2">
-                          <div className="text-sm text-white mb-1">{pair.left}</div>
+                        <div key={pair.leftId} className="border border-snow/10 rounded-lg px-3 py-2">
+                          <div className="text-sm text-snow mb-1">{pair.left}</div>
                           <div className="flex items-center gap-2 text-xs">
                             <span className="text-smoke">Your match:</span>
-                            <span className={pairCorrect ? "text-white" : "text-smoke"}>{selected || "(blank)"}</span>
+                            <span className={pairCorrect ? "text-snow" : "text-smoke"}>{selected || "(blank)"}</span>
                           </div>
                           {!pairCorrect && (
                             <div className="flex items-center gap-2 text-xs mt-1">
                               <span className="text-smoke">Correct:</span>
-                              <span className="text-white">{pair.right}</span>
+                              <span className="text-snow">{pair.right}</span>
                             </div>
                           )}
                         </div>
@@ -320,14 +333,14 @@ export default async function ResultPage({
                 <div className="ml-8 space-y-2">
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-smoke">Your answer:</span>
-                    <span className={isCorrect ? "text-white" : "text-smoke"}>
+                    <span className={isCorrect ? "text-snow" : "text-smoke"}>
                       {(answer.writtenAnswer || "(blank)").toUpperCase()}
                     </span>
                   </div>
                   {!isCorrect && (
                     <div className="flex items-center gap-2 text-sm">
                       <span className="text-smoke">Correct answer:</span>
-                      <span className="text-white">{(question.correctAnswer || "").toUpperCase()}</span>
+                      <span className="text-snow">{(question.correctAnswer || "").toUpperCase()}</span>
                     </div>
                   )}
                 </div>
@@ -336,7 +349,7 @@ export default async function ResultPage({
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-smoke">Your answer:</span>
                     <span
-                      className={isCorrect ? "text-white" : "text-smoke"}
+                      className={isCorrect ? "text-snow" : "text-smoke"}
                     >
                       {answer.writtenAnswer || "(blank)"}
                     </span>
@@ -344,7 +357,7 @@ export default async function ResultPage({
                   {!isCorrect && (
                     <div className="flex items-center gap-2 text-sm">
                       <span className="text-smoke">Correct answer:</span>
-                      <span className="text-white">
+                      <span className="text-snow">
                         {question.correctAnswer}
                       </span>
                     </div>

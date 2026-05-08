@@ -38,7 +38,7 @@ export default function ShareSetButton({ setId }: ShareSetButtonProps) {
       type="button"
       onClick={handleShare}
       disabled={isCopying}
-      className="text-smoke hover:text-white transition-colors p-1 disabled:opacity-60"
+      className="text-smoke hover:text-snow transition-colors p-1 disabled:opacity-60"
       title={copied ? "Link copied" : "Share study set"}
       aria-label={copied ? "Link copied" : "Share study set"}
     >

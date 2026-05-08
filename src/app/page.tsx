@@ -8,7 +8,7 @@ import { DeleteSetButton } from "@/components/DeleteSetButton"
 import ShareSetButton from "@/components/ShareSetButton"
 
 const TYPE_CONFIG = {
-  MULTIPLE_CHOICE: { label: "Multiple Choice", color: "text-white bg-white/5 border-white/15" },
+  MULTIPLE_CHOICE: { label: "Multiple Choice", color: "text-snow" },
   WRITTEN: { label: "Written", color: "text-fog bg-white/5 border-white/15" },
   TRUE_FALSE: { label: "True / False", color: "text-fog bg-white/5 border-white/15" },
   MATCHING: { label: "Matching", color: "text-fog bg-white/5 border-white/15" },
@@ -127,7 +127,7 @@ export default async function DashboardPage() {
                   <div className="flex items-center gap-2">
                     <Link
                       href={`/sets/${set.id}/edit`}
-                      className="text-smoke hover:text-white transition-colors p-1"
+                      className="text-smoke hover:text-snow transition-colors p-1"
                       title="Edit study set"
                     >
                       <Pencil className="w-4 h-4" />

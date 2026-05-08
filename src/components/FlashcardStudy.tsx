@@ -72,21 +72,26 @@ export default function FlashcardStudy({ studySet }: { studySet: FlashcardData }
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-6">
         <button
           onClick={goPrevious}
-          className="sm:col-span-1 flex items-center justify-center gap-2 bg-night border border-steel/50 text-fog hover:text-white hover:border-white/20 rounded-xl py-3 cursor-pointer"
+          className="sm:col-span-1 flex items-center justify-center gap-2 bg-night border border-steel/50 text-fog hover:text-snow hover:border-white/20 rounded-xl py-3 cursor-pointer"
         >
           <ChevronLeft className="w-4 h-4" />
           Previous
         </button>
         <button
           onClick={() => setFlipped((prev) => !prev)}
-          className="sm:col-span-2 flex items-center justify-center gap-2 bg-white text-black font-heading font-bold rounded-xl py-3 hover:shadow-lg hover:shadow-white/15 transition-all duration-200 cursor-pointer"
+          className="sm:col-span-2 flex items-center justify-center gap-2 font-heading font-bold rounded-xl py-3 hover:shadow-lg transition-all duration-200 cursor-pointer"
+          style={{
+            background: "var(--button-primary-bg)",
+            color: "var(--button-primary-text)",
+            boxShadow: `0 10px 15px -3px rgba(var(--button-primary-bg), 0.1)`,
+          }}
         >
           <RotateCcw className="w-4 h-4" />
           {flipped ? "Show Term" : "Show Definition"}
         </button>
         <button
           onClick={goNext}
-          className="sm:col-span-1 flex items-center justify-center gap-2 bg-night border border-steel/50 text-fog hover:text-white hover:border-white/20 rounded-xl py-3 cursor-pointer"
+          className="sm:col-span-1 flex items-center justify-center gap-2 bg-night border border-steel/50 text-fog hover:text-snow hover:border-white/20 rounded-xl py-3 cursor-pointer"
         >
           Next
           <ChevronRight className="w-4 h-4" />

@@ -17,9 +17,19 @@ export function Navbar() {
     <nav className="sticky top-0 z-40 backdrop-blur-xl bg-midnight/80 border-b border-steel/50">
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5 group">
-          <span className="font-heading text-xl sm:text-2xl font-bold text-snow tracking-[0.08em] brand-neon group-hover:opacity-100 transition-opacity">
-            QuizMe
-          </span>
+          <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-lg shadow-white/10 group-hover:shadow-white/20 transition-shadow">
+            <span className="text-black font-heading font-extrabold text-base">
+              Q
+            </span>
+          </div>
+          <div className="flex flex-col leading-tight">
+            <span className="font-heading text-xl font-bold text-snow tracking-tight">
+              Quiz<span className="text-snow">Me</span>
+            </span>
+            <span className="text-[10px] text-fog/70 font-semibold tracking-wide uppercase">
+              by HCWS
+            </span>
+          </div>
         </Link>
 
         <div className="flex items-center gap-4">

@@ -1,26 +1,9 @@
 "use client"
 
-import { Suspense } from "react"
 import { signIn } from "next-auth/react"
-import { useSearchParams } from "next/navigation"
 import { ThemeToggle } from "@/components/ThemeToggle"
 
 export default function SignInPage() {
-  return (
-    <Suspense fallback={<SignInFallback />}>
-      <SignInContent />
-    </Suspense>
-  )
-}
-
-function SignInFallback() {
-  return <div className="min-h-screen bg-black" />
-}
-
-function SignInContent() {
-  const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get("callbackUrl") || "/"
-
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-6">
       <div className="absolute top-6 right-6 z-10">
@@ -35,16 +18,26 @@ function SignInContent() {
       {/* Card */}
       <div className="relative bg-night/80 backdrop-blur-xl border border-steel/50 rounded-3xl p-10 sm:p-12 w-full max-w-md text-center animate-scale-in">
         {/* Logo */}
+        <div className="w-20 h-20 mx-auto mb-8 rounded-2xl flex items-center justify-center shadow-2xl" style={{ background: "var(--button-primary-bg)", boxShadow: `0 25px 50px -12px ${"rgba(var(--button-primary-bg), 0.1)"}` }}>
+          <span className="font-heading font-extrabold text-3xl" style={{ color: "var(--button-primary-text)" }}>
+            Q
+          </span>
+        </div>
+
         <h1 className="font-heading text-3xl sm:text-4xl font-bold text-snow mb-3 tracking-tight">
-          Welcome to <span className="brand-neon text-white">QuizMe</span>
+          Welcome to Quiz<span className="text-snow">Me</span>
         </h1>
         <p className="text-fog text-lg mb-10 max-w-xs mx-auto leading-relaxed">
           Create custom quizzes and track your learning progress.
         </p>
 
         <button
-          onClick={() => signIn("google", { callbackUrl })}
-          className="w-full flex items-center justify-center gap-3 bg-white text-gray-800 font-semibold py-4 px-6 rounded-xl hover:bg-gray-50 hover:shadow-lg transition-all duration-200 cursor-pointer"
+          onClick={() => signIn("google", { callbackUrl: "/" })}
+          className="w-full flex items-center justify-center gap-3 font-semibold py-4 px-6 rounded-xl hover:shadow-lg transition-all duration-200 cursor-pointer"
+          style={{
+            background: "var(--button-primary-bg)",
+            color: "var(--button-primary-text)",
+          }}
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path

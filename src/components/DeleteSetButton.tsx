@@ -18,7 +18,7 @@ export function DeleteSetButton({ setId }: { setId: string }) {
   return (
     <button
       onClick={handleDelete}
-      className="text-smoke hover:text-white transition-colors cursor-pointer p-1"
+      className="text-smoke hover:text-snow transition-colors cursor-pointer p-1"
       title="Delete study set"
     >
       <Trash2 className="w-4 h-4" />
